@@ -19,7 +19,7 @@ public class MethodClassifier {
 		// addClassifier(outReferences, 6);
 		// addClassifier(fieldReads, 5);
 		// addClassifier(fieldWrites, 5);
-		// addClassifier(position, 3);
+		addClassifier(position, 3);
 		// addClassifier(code, 12, ClassifierLevel.Full, ClassifierLevel.Extra);
 		// addClassifier(inRefsBci, 6, ClassifierLevel.Extra);
 	}
@@ -224,10 +224,10 @@ public class MethodClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier position = new AbstractClassifier("position", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-	// 		return ClassifierUtil.classifyPosition(methodA, methodB, MemberInstance::getPosition, (m, idx) -> m.getCls().getMethod(idx), m -> m.getCls().getMethods());
-	// 	}
-	// );
+	private static AbstractClassifier position = new AbstractClassifier("position", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+			return ClassifierUtil.classifyPosition(methodA, methodB, method => method.position, (m, idx) => m.containingType.methodsOrdered[idx], f => f.containingType.methodsOrdered);
+		}
+	);
 
 	// private static AbstractClassifier code = new AbstractClassifier("code", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
 	// 		if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);

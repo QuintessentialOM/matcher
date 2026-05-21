@@ -17,7 +17,7 @@ public class TypeClassifier {
 		// addClassifier(similarMethods, 10);
 		// addClassifier(outReferences, 6);
 		// addClassifier(inReferences, 6);
-		// addClassifier(stringConstants, 8);
+		addClassifier(stringConstants, 8);
 		// addClassifier(numericConstants, 6);
 		// addClassifier(methodOutReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		// addClassifier(methodInReferences, 6, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
@@ -334,10 +334,10 @@ public class TypeClassifier {
 	// 	return ret;
 	// }
 
-	// private static AbstractClassifier stringConstants = new AbstractClassifier("string constants", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
-	// 		return ClassifierUtil.compareSets(clsA.getStrings(), clsB.getStrings(), true);
-	// 	}
-	// );
+	private static AbstractClassifier stringConstants = new AbstractClassifier("string constants", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
+			return ClassifierUtil.compareSets(clsA.strings, clsB.strings, true);
+		}
+	);
 
 	// private static AbstractClassifier numericConstants = new AbstractClassifier("numeric constants", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
 	// 		HashSet<int> intsA = new();

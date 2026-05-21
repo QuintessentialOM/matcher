@@ -15,7 +15,10 @@ public static class MatcherMain {
 		var moduleA = ModuleDefinition.ReadModule("Lightning_old.exe");
 		var moduleB = ModuleDefinition.ReadModule("Lightning_ce_skew_polymers.exe");
 		var matcher = new Matcher();
-		matcher.Init(moduleA, moduleB);
+		matcher.Init(moduleA, moduleB,
+				"#=qb3HWBkVlFVubfVOAwuy8rw==",
+				"#=qDID3KRmTOKqTiWqrwHq$pA==",
+				["strings_old.csv"], ["strings_ce_skew_polymers.csv"]);
 		Console.WriteLine(matcher.getStatus(false));
 		matcher.autoMatchAll(n => Console.WriteLine(n));
 		foreach (var cls in matcher.env.envA.types.Keys) {

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Matcher;
@@ -20,4 +21,7 @@ public static class Utils {
 		Array.Copy(data, 0, result, 0, length);
 		return result;
 	}
+
+	public static IEnumerable<(int index, T item)> WithIndex<T>(this IEnumerable<T> self)       
+       => self.Select((item, index) => (index, item));
 }

@@ -13,7 +13,7 @@ public class MethodInstance : MatchableMember {
 	public TypeInstance returnType;
 
 	[SetsRequiredMembers]
-	public MethodInstance(LocalClassEnv env, TypeInstance containingType, MethodDefinition cecilMethod, bool isNameObfuscated) : base(env, containingType, cecilMethod, isNameObfuscated) {
+	public MethodInstance(LocalClassEnv env, TypeInstance containingType, MethodDefinition cecilMethod, int position, bool isNameObfuscated) : base(env, containingType, cecilMethod, position, isNameObfuscated) {
 		MethodParamInstance[] args = new MethodParamInstance[cecilMethod.Parameters.Count];
 		for (int i = 0; i < cecilMethod.Parameters.Count; i++) {
 			var param = cecilMethod.Parameters[i];

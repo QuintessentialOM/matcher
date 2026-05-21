@@ -1,8 +1,10 @@
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Matcher.Matching;
 using Matcher.Matching.Classifier;
 using Mono.Cecil;
+using Mono.Cecil.Cil;
 
 namespace Matcher;
 
@@ -33,8 +35,12 @@ public class Matcher {
 			VisitTypes(type, act);
 	}
 
-	public void Init(ModuleDefinition moduleA, ModuleDefinition moduleB) {
+	public void Init(ModuleDefinition moduleA, ModuleDefinition moduleB, string stringDeobfNameA, string stringDeobfNameB, List<string> stringsPathsA, List<string> stringsPathsB) {
 		// TODO want to preprocess by replacing string deobf method calls with `ldstr`, like OpusMutatum does
+		Console.WriteLine("Inlining strings for module A");
+		InlineStrings(moduleA, stringDeobfNameA, LoadStrings(stringsPathsA));
+		Console.WriteLine("Inlining strings for module B");
+		InlineStrings(moduleB, stringDeobfNameB, LoadStrings(stringsPathsB));
 
 		// TODO env init stuff - see ClassFeatureExtractor.process
 		// what fabric matcher does:
@@ -60,21 +66,92 @@ public class Matcher {
 		MatchUnobfuscated();
 	}
 
+	// copied from OpusMutatum
+	private static Dictionary<int, string> LoadStrings(List<string> StringsPaths) {
+		Dictionary<int, string> Strings = [];
+
+		if(StringsPaths.Count > 0) {
+			foreach(var path in StringsPaths) {
+				if(!File.Exists(path))
+					continue; // TODO warn or error?
+				string[] lines = File.ReadAllLines(path);
+				int lastIndex = 0;
+				foreach (string line in lines) {
+					string[] split = line.Split(["~,~"], StringSplitOptions.None);
+					if(split.Length > 1) {
+						// if we *can* split on this line, then we're definitely at the first line of a string
+						try {
+							lastIndex = int.Parse(split[0]);
+							Strings[lastIndex] = split[1];
+						} catch(FormatException) { }
+					} else {
+						// if this line isn't blank (or even if it is), then we're continuing a previous multi-line string, so append
+						Strings[lastIndex] += "\n" + line;
+					}
+				}
+			}
+			Console.WriteLine("Loaded " + Strings.Count + " strings.");
+		}
+		return Strings;
+	}
+
+	private static void InlineStrings(ModuleDefinition module, string stringDeobfName, Dictionary<int, string> strings) {
+		var types = CollectNestedTypes(module.Types);
+		int inlined = 0;
+		List<(Instruction, int)> stringsToBeInlined = [];
+		foreach (var type in types) {
+			foreach (var method in type.Methods) {
+				if(method.Body != null && method.Body.Instructions != null) {
+					foreach(var instr in method.Body.Instructions) {
+						if(instr != null && instr.Operand is MethodReference mref && !mref.IsWindowsRuntimeProjection) {
+							if (mref.Name.Equals(stringDeobfName) && mref.Parameters.Count == 1 && instr.Previous.OpCode == OpCodes.Ldc_I4) {
+								stringsToBeInlined.Add((instr, (int)instr.Previous.Operand));
+							}
+						}
+					}
+				}
+			}
+		}
+		foreach (var stringFunc in stringsToBeInlined) {
+			if(strings.ContainsKey(stringFunc.Item2)) {
+				stringFunc.Item1.Previous.OpCode = OpCodes.Nop;
+				stringFunc.Item1.Previous.Operand = null;
+				stringFunc.Item1.OpCode = OpCodes.Ldstr;
+				stringFunc.Item1.Operand = strings[stringFunc.Item2];
+				inlined++;
+			} else {
+				Console.WriteLine($"Missing string for {stringFunc.Item2}");
+			}
+		}
+		Console.WriteLine($"Inlined {inlined} strings");
+	}
+
 	private void InitTypeA(TypeInstance cls, LocalClassEnv env) {
-		foreach (var method in cls.cecilType.Methods) {
-			var methodInstance = new MethodInstance(env, cls, method, !NonObfuscatedPattern.IsMatch(method.Name));
+		foreach (var (position, method) in cls.cecilType.Methods.WithIndex()) {
+			var methodInstance = new MethodInstance(env, cls, method, position, !NonObfuscatedPattern.IsMatch(method.Name));
 			cls.methodsById[methodInstance.getId()] = methodInstance;
+			cls.methodsOrdered.Add(methodInstance);
+
+			// Collect strings in method bodies. C# sets fields in constructor + static constructor so this should account for initialized string fields too... I think?
+			if(method.Body != null && method.Body.Instructions != null) {
+				foreach(var instr in method.Body.Instructions) {
+					if(instr != null && instr.OpCode == OpCodes.Ldstr) {
+						cls.strings.Add((string) instr.Operand);
+					}
+				}
+			}
 		}
-		foreach (var field in cls.cecilType.Fields) {
-			var fieldInstance = new FieldInstance(env, cls, field, !NonObfuscatedPattern.IsMatch(field.Name));
+		foreach (var (position, field) in cls.cecilType.Fields.WithIndex()) {
+			var fieldInstance = new FieldInstance(env, cls, field, position, !NonObfuscatedPattern.IsMatch(field.Name));
 			cls.fieldsById[fieldInstance.getId()] = fieldInstance;
+			cls.fieldsOrdered.Add(fieldInstance);
 		}
-		foreach (var genericParam in cls.cecilType.GenericParameters) {
-			var genericParamInstance = new GenericParamInstance(env, cls, genericParam, !NonObfuscatedPattern.IsMatch(genericParam.Name));
+		foreach (var (position, genericParam) in cls.cecilType.GenericParameters.WithIndex()) {
+			var genericParamInstance = new GenericParamInstance(env, cls, genericParam, position, !NonObfuscatedPattern.IsMatch(genericParam.Name));
 			cls.genericParamsById[genericParamInstance.getId()] = genericParamInstance;
+			cls.genericParamsOrdered.Add(genericParamInstance);
 		}
 
-		// TODO collect strings
 		var parent = cls.cecilType.BaseType;
 		if (parent != null) {
 			var parentTypeInstance = env.getCreateTypeInstance(parent.Name);

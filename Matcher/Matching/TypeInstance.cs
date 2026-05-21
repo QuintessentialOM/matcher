@@ -12,11 +12,18 @@ public class TypeInstance : MatchableMemberOrClass {
 	public readonly Dictionary<string, MethodInstance> methodsById = [];
 	public readonly Dictionary<string, FieldInstance> fieldsById = [];
 	public readonly Dictionary<string, GenericParamInstance> genericParamsById = [];
+
+	public readonly List<MethodInstance> methodsOrdered = [];
+	public readonly List<FieldInstance> fieldsOrdered = [];
+	public readonly List<GenericParamInstance> genericParamsOrdered = [];
+	
 	private bool matchable = true;
 	private TypeInstance? matchedType;
 
 	public readonly TypeInstance? elementType; // type of array elements, for array types
 	public List<TypeInstance> arrays = []; // array types with this type as an element, for non-array types
+
+	public readonly HashSet<string> strings = [];
 
 	public TypeInstance? baseType;
 	public readonly List<TypeInstance> childTypes = [];

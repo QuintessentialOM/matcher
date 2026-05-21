@@ -8,7 +8,7 @@ public class FieldClassifier {
 		// addClassifier(signature, 5);
 		// addClassifier(readReferences, 6);
 		// addClassifier(writeReferences, 6);
-		// addClassifier(position, 3);
+		addClassifier(position, 3);
 		// addClassifier(initValue, 7);
 		// addClassifier(initStrings, 8);
 		// addClassifier(initCode, 10, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
@@ -102,16 +102,16 @@ public class FieldClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier position = new AbstractClassifier("position", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
-	// 		/*if (fieldA.position == fieldB.position) return 1;
+	private static AbstractClassifier position = new AbstractClassifier("position", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
+			/*if (fieldA.position == fieldB.position) return 1;
 
-	// 		double relPosA = ClassifierUtil.getRelativePosition(fieldA.position, fieldA.cls.fields.size());
-	// 		double relPosB = ClassifierUtil.getRelativePosition(fieldB.position, fieldB.cls.fields.size());
+			double relPosA = ClassifierUtil.getRelativePosition(fieldA.position, fieldA.cls.fields.size());
+			double relPosB = ClassifierUtil.getRelativePosition(fieldB.position, fieldB.cls.fields.size());
 
-	// 		return 1 - Math.abs(relPosA - relPosB);*/
-	// 		return ClassifierUtil.classifyPosition(fieldA, fieldB, MemberInstance::getPosition, (f, idx) => f.containingType.getField(idx), f => f.containingType.getFields());
-	// 	}
-	// );
+			return 1 - Math.abs(relPosA - relPosB);*/
+			return ClassifierUtil.classifyPosition(fieldA, fieldB, field => field.position, (f, idx) => f.containingType.fieldsOrdered[idx], f => f.containingType.fieldsOrdered);
+		}
+	);
 
 	// private static AbstractClassifier initValue = new AbstractClassifier("init value", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
 	// 		if (!checkAsmNodes(fieldA, fieldB)) return compareAsmNodes(fieldA, fieldB);

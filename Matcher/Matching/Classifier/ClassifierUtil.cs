@@ -783,11 +783,11 @@ public class ClassifierUtil {
 	public static double classifyPosition<T>(T a, T b,
 			Func<T, int> positionSupplier,
 			Func<T, int, T> siblingSupplier,
-			Func<T, T[]> siblingsSupplier) where T : Matchable {
+			Func<T, List<T>> siblingsSupplier) where T : Matchable {
 		int posA = positionSupplier.Invoke(a);
 		int posB = positionSupplier.Invoke(b);
-		T[] siblingsA = siblingsSupplier.Invoke(a);
-		T[] siblingsB = siblingsSupplier.Invoke(b);
+		T[] siblingsA = siblingsSupplier.Invoke(a).ToArray();
+		T[] siblingsB = siblingsSupplier.Invoke(b).ToArray();
 
 		if (posA == posB && siblingsA.Length == siblingsB.Length) return 1;
 		if (posA == -1 || posB == -1) return posA == posB ? 1 : 0;
@@ -838,7 +838,7 @@ public class ClassifierUtil {
 		return 1 - Math.Abs(relPosA - relPosB);
 	}
 
-	private static double getRelativePosition(int position, int size) {
+	public static double getRelativePosition(int position, int size) {
 		if (size == 1) return 0.5;
 		// assert size > 1;
 

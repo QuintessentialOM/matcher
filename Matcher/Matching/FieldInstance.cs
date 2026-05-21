@@ -13,7 +13,7 @@ public class FieldInstance : MatchableMember {
 	public TypeInstance fieldType;
 
 	[SetsRequiredMembers]
-	public FieldInstance(LocalClassEnv env, TypeInstance containingType, FieldDefinition cecilField, bool isNameObfuscated) : base(env, containingType, cecilField, isNameObfuscated) {
+	public FieldInstance(LocalClassEnv env, TypeInstance containingType, FieldDefinition cecilField, int position, bool isNameObfuscated) : base(env, containingType, cecilField, position, isNameObfuscated) {
 		id = getId(cecilField.Name, cecilField.FieldType.Name);
 		fieldType = env.getCreateTypeInstance(cecilField.FieldType.Name);
 	}

@@ -10,7 +10,7 @@ public class GenericParamInstance : MatchableMember {
 	private GenericParamInstance? matchedGenericParam;
 
 	[SetsRequiredMembers]
-	public GenericParamInstance(LocalClassEnv env, TypeInstance containingType, GenericParameter cecilGenericParam, bool isNameObfuscated) : base(env, containingType, cecilGenericParam, isNameObfuscated) {
+	public GenericParamInstance(LocalClassEnv env, TypeInstance containingType, GenericParameter cecilGenericParam, int position, bool isNameObfuscated) : base(env, containingType, cecilGenericParam, position, isNameObfuscated) {
 	}
 	
 	// TODO should probably actually care about generic constraints but that's more effort
