@@ -508,18 +508,25 @@ public class Matcher {
 
 
 	public void autoMatchAll(Action<double> progressReceiver) {
+		Console.WriteLine($"initial {getStatus(true)}");
 		if (autoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)) {
+			Console.WriteLine($"classes {getStatus(true)}");
 			autoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
 		}
+		Console.WriteLine($"classes {getStatus(true)}");
 
 		autoMatchLevel(ClassifierLevel.Intermediate, progressReceiver);
+		Console.WriteLine($"intermediate {getStatus(true)}");
 		autoMatchLevel(ClassifierLevel.Full, progressReceiver);
+		Console.WriteLine($"full {getStatus(true)}");
 		autoMatchLevel(ClassifierLevel.Extra, progressReceiver);
+		Console.WriteLine($"extra {getStatus(true)}");
 
 		bool matchedAny;
 
 		do {
 			matchedAny = autoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
+			Console.WriteLine($"args {getStatus(true)}");
 			// matchedAny |= autoMatchMethodVars(ClassifierLevel.Full, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
 		} while (matchedAny);
 	}

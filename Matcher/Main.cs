@@ -19,12 +19,6 @@ public static class MatcherMain {
 				"#=qb3HWBkVlFVubfVOAwuy8rw==",
 				"#=qDID3KRmTOKqTiWqrwHq$pA==",
 				["strings_old.csv"], ["strings_ce_skew_polymers.csv"]);
-		Console.WriteLine(matcher.getStatus(true));
 		matcher.autoMatchAll(n => Console.WriteLine(n));
-		// foreach (var cls in matcher.env.envA.types.Keys) {
-		// 	if (matcher.env.envA.types[cls].hasMatch() && !Matcher.NonObfuscatedPattern.IsMatch(cls))
-		// 		Console.WriteLine(cls);
-		// }
-		Console.WriteLine(matcher.getStatus(true));
 	}
 }

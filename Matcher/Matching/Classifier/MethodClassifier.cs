@@ -7,8 +7,8 @@ public class MethodClassifier {
 	public static void init() {
 		addClassifier(methodTypeCheck, 10);
 		addClassifier(accessFlags, 4);
-		// addClassifier(argTypes, 10);
-		// addClassifier(retType, 5);
+		addClassifier(argTypes, 10);
+		addClassifier(retType, 5);
 		// addClassifier(signature, 5);
 		// addClassifier(classRefs, 3);
 		addClassifier(stringConstants, 5);
@@ -121,28 +121,19 @@ public class MethodClassifier {
 		}
 	);
 
-	// private static AbstractClassifier argTypes = new AbstractClassifier("arg types", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-	// 		return ClassifierUtil.compareClassLists(getArgTypes(methodA), getArgTypes(methodB));
-	// 	}
-	// );
+	private static AbstractClassifier argTypes = new AbstractClassifier("arg types", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+			return ClassifierUtil.compareClassLists(getArgTypes(methodA), getArgTypes(methodB));
+		}
+	);
 
-	// private static List<TypeInstance> getArgTypes(MethodInstance method) {
-	// 	MethodVarInstance[] args = method.getArgs();
-	// 	if (argsdsts.Length == 0) return Collections.emptyList();
+	private static List<TypeInstance> getArgTypes(MethodInstance method) {
+		return [.. method.args.Select(param => param.paramType)];
+	}
 
-	// 	List<TypeInstance> ret = new ArrayList<>(argsdsts.Length);
-
-	// 	for (MethodVarInstance arg : args) {
-	// 		ret.add(arg.getType());
-	// 	}
-
-	// 	return ret;
-	// }
-
-	// private static AbstractClassifier retType = new AbstractClassifier("ret type", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-	// 		return ClassifierUtil.checkPotentialEquality(methodA.getRetType(), methodB.getRetType()) ? 1 : 0;
-	// 	}
-	// );
+	private static AbstractClassifier retType = new AbstractClassifier("ret type", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+			return ClassifierUtil.checkPotentialEquality(methodA.returnType, methodB.returnType) ? 1 : 0;
+		}
+	);
 
 	// private static AbstractClassifier signature = new AbstractClassifier("signature", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
 	// 		MethodSignature sigA = methodA.getSignature();

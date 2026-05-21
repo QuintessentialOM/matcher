@@ -4,7 +4,7 @@ namespace Matcher.Matching.Classifier;
 
 public class MethodParamClassifier {
 	public static void init() {
-		// addClassifier(type, 10);
+		addClassifier(type, 10);
 		// addClassifier(position, 3);
 		// addClassifier(lvIndex, 2);
 		// addClassifier(usage, 8);
@@ -33,10 +33,10 @@ public class MethodParamClassifier {
 	private static readonly Dictionary<ClassifierLevel, List<IClassifier<MethodParamInstance>>> classifiers = new();
 	private static readonly Dictionary<ClassifierLevel, double> maxScore = new();
 
-	// private static AbstractClassifier type = new AbstractClassifier("type", (MethodParamInstance argA, MethodParamInstance argB, MatchingEnv env) => {
-	// 		return ClassifierUtil.checkPotentialEquality(argA.getType(), argB.getType()) ? 1 : 0;
-	// 	}
-	// );
+	private static AbstractClassifier type = new AbstractClassifier("type", (MethodParamInstance argA, MethodParamInstance argB, MatchingEnv env) => {
+			return ClassifierUtil.checkPotentialEquality(argA.paramType, argB.paramType) ? 1 : 0;
+		}
+	);
 
 	// private static AbstractClassifier position = new AbstractClassifier("position", (MethodParamInstance methodA, MethodParamInstance methodB, MatchingEnv env) => {
 	// 		return ClassifierUtil.classifyPosition(methodA, methodB,
