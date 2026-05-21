@@ -1,3 +1,4 @@
+using Mono.Cecil;
 using Mono.Cecil.Cil;
 
 namespace Matcher.Matching.Classifier;
@@ -752,19 +753,43 @@ public class ClassifierUtil {
 		}
 	}
 
-	// public static void extractNumbers(MethodNode node, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
-	// 	foreach (var aInsn in node.instructions) {
-	// 		if (aInsn is LdcInsnNode) {
-	// 			LdcInsnNode insn = (LdcInsnNode) aInsn;
-
-	// 			handleNumberValue(insn.cst, ints, longs, floats, doubles);
-	// 		} else if (aInsn is IntInsnNode) {
-	// 			IntInsnNode insn = (IntInsnNode) aInsn;
-
-	// 			ints.Add(insn.operand);
-	// 		}
-	// 	}
-	// }
+	public static void extractNumbers(MethodDefinition method, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
+		if(method.Body != null && method.Body.Instructions != null) {
+			foreach (var instr in method.Body.Instructions) {
+				if (instr.OpCode == OpCodes.Ldc_I4_M1) {
+					ints.Add(-1);
+				} else if (instr.OpCode == OpCodes.Ldc_I4_0) {
+					ints.Add(0);
+				} else if (instr.OpCode == OpCodes.Ldc_I4_1) {
+					ints.Add(1);
+				} else if (instr.OpCode == OpCodes.Ldc_I4_2) {
+					ints.Add(2);
+				} else if (instr.OpCode == OpCodes.Ldc_I4_3) {
+					ints.Add(3);
+				} else if (instr.OpCode == OpCodes.Ldc_I4_4) {
+					ints.Add(4);
+				} else if (instr.OpCode == OpCodes.Ldc_I4_5) {
+					ints.Add(5);
+				} else if (instr.OpCode == OpCodes.Ldc_I4_6) {
+					ints.Add(6);
+				} else if (instr.OpCode == OpCodes.Ldc_I4_7) {
+					ints.Add(7);
+				} else if (instr.OpCode == OpCodes.Ldc_I4_8) {
+					ints.Add(8);
+				} else if (instr.OpCode == OpCodes.Ldc_I4_S ) {
+					ints.Add((sbyte) instr.Operand);
+				} else if (instr.OpCode == OpCodes.Ldc_I4) {
+					ints.Add((int) instr.Operand);
+				} else if (instr.OpCode == OpCodes.Ldc_I8) {
+					longs.Add((long) instr.Operand);
+				} else if (instr.OpCode == OpCodes.Ldc_R4) {
+					floats.Add((float) instr.Operand);
+				} else if (instr.OpCode == OpCodes.Ldc_R8) {
+					doubles.Add((double) instr.Operand);
+				}
+			}
+		}
+	}
 
 	public static void handleNumberValue(object number, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
 		if (number == null) return;

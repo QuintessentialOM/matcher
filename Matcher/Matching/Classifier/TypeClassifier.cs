@@ -18,7 +18,7 @@ public class TypeClassifier {
 		// addClassifier(outReferences, 6);
 		// addClassifier(inReferences, 6);
 		addClassifier(stringConstants, 8);
-		// addClassifier(numericConstants, 6);
+		addClassifier(numericConstants, 6);
 		// addClassifier(methodOutReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		// addClassifier(methodInReferences, 6, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		// addClassifier(fieldReadReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
@@ -339,25 +339,25 @@ public class TypeClassifier {
 		}
 	);
 
-	// private static AbstractClassifier numericConstants = new AbstractClassifier("numeric constants", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
-	// 		HashSet<int> intsA = new();
-	// 		HashSet<int> intsB = new();
-	// 		HashSet<long> longsA = new();
-	// 		HashSet<long> longsB = new();
-	// 		HashSet<float> floatsA = new();
-	// 		HashSet<float> floatsB = new();
-	// 		HashSet<double> doublesA = new();
-	// 		HashSet<double> doublesB = new();
+	private static AbstractClassifier numericConstants = new AbstractClassifier("numeric constants", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
+			HashSet<int> intsA = new();
+			HashSet<int> intsB = new();
+			HashSet<long> longsA = new();
+			HashSet<long> longsB = new();
+			HashSet<float> floatsA = new();
+			HashSet<float> floatsB = new();
+			HashSet<double> doublesA = new();
+			HashSet<double> doublesB = new();
 
-	// 		extractNumbers(clsA, intsA, longsA, floatsA, doublesA);
-	// 		extractNumbers(clsB, intsB, longsB, floatsB, doublesB);
+			extractNumbers(clsA, intsA, longsA, floatsA, doublesA);
+			extractNumbers(clsB, intsB, longsB, floatsB, doublesB);
 
-	// 		return (ClassifierUtil.compareSets(intsA, intsB, false)
-	// 				+ ClassifierUtil.compareSets(longsA, longsB, false)
-	// 				+ ClassifierUtil.compareSets(floatsA, floatsB, false)
-	// 				+ ClassifierUtil.compareSets(doublesA, doublesB, false)) / 4;
-	// 	}
-	// );
+			return (ClassifierUtil.compareSets(intsA, intsB, false)
+					+ ClassifierUtil.compareSets(longsA, longsB, false)
+					+ ClassifierUtil.compareSets(floatsA, floatsB, false)
+					+ ClassifierUtil.compareSets(doublesA, doublesB, false)) / 4;
+		}
+	);
 
 	// private static AbstractClassifier membersFull = new AbstractClassifier("members full", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
 	// 		/*if (clsA.getName().equals("agl") && clsB.getName().equals("aht")) {
@@ -456,21 +456,20 @@ public class TypeClassifier {
 	// 	}
 	// );
 
-	// private static void extractNumbers(TypeInstance cls, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
-	// 	foreach (MethodInstance method in cls.methodsById.Values) {
-	// 		MethodNode asmNode = method.getAsmNode();
-	// 		if (asmNode == null) continue;
+	private static void extractNumbers(TypeInstance cls, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
+		foreach (MethodInstance method in cls.methodsById.Values) {
+			if (method.cecilMethod == null) continue;
 
-	// 		ClassifierUtil.extractNumbers(asmNode, ints, longs, floats, doubles);
-	// 	}
+			ClassifierUtil.extractNumbers(method.cecilMethod, ints, longs, floats, doubles);
+		}
 
-	// 	foreach (FieldInstance field in cls.fieldsById.Values) {
-	// 		FieldNode asmNode = field.getAsmNode();
-	// 		if (asmNode == null) continue;
+		// foreach (FieldInstance field in cls.fieldsById.Values) {
+		// 	FieldNode asmNode = field.getAsmNode();
+		// 	if (asmNode == null) continue;
 
-	// 		ClassifierUtil.handleNumberValue(asmNode.value, ints, longs, floats, doubles);
-	// 	}
-	// }
+		// 	ClassifierUtil.handleNumberValue(asmNode.value, ints, longs, floats, doubles);
+		// }
+	}
 
 	public class AbstractClassifier : IClassifier<TypeInstance> {
 		private readonly string name;

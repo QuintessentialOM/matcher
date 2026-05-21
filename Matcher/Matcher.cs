@@ -137,6 +137,7 @@ public class Matcher {
 				foreach(var instr in method.Body.Instructions) {
 					if(instr != null && instr.OpCode == OpCodes.Ldstr) {
 						cls.strings.Add((string) instr.Operand);
+						methodInstance.strings.Add((string) instr.Operand);
 					}
 				}
 			}
@@ -572,8 +573,6 @@ public class Matcher {
 				TypeInstance match = ranking[0].subject;
 
 				matches[cls] = match;
-
-				Console.WriteLine($"{cls.getName()} -> {match.getName()}");
 			}
 		}
 
@@ -850,7 +849,7 @@ public class Matcher {
 		int matchedFieldCount = 0;
 
 		foreach (TypeInstance cls in env.envA.types.Values) {
-			// if (inputsOnly && !cls.isInput()) continue;
+			if (inputsOnly && cls.cecilType == null) continue;
 
 			totalClassCount++;
 			if (cls.hasMatch()) matchedClassCount++;

@@ -11,8 +11,8 @@ public class MethodClassifier {
 		// addClassifier(retType, 5);
 		// addClassifier(signature, 5);
 		// addClassifier(classRefs, 3);
-		// addClassifier(stringConstants, 5);
-		// addClassifier(numericConstants, 5);
+		addClassifier(stringConstants, 5);
+		addClassifier(numericConstants, 5);
 		// addClassifier(parentMethods, 10);
 		// addClassifier(childMethods, 3);
 		// addClassifier(inReferences, 6);
@@ -160,39 +160,34 @@ public class MethodClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier stringConstants = new AbstractClassifier("string constants", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-	// 		if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
+	private static AbstractClassifier stringConstants = new AbstractClassifier("string constants", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+			if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
 
-	// 		HashSet<String> stringsA = new();
-	// 		ClassifierUtil.extractStrings(methodA.getAsmNode().instructions, stringsA);
-	// 		HashSet<String> stringsB = new();
-	// 		ClassifierUtil.extractStrings(methodB.getAsmNode().instructions, stringsB);
+			return ClassifierUtil.compareSets(methodA.strings, methodB.strings, false);
+		}
+	);
 
-	// 		return ClassifierUtil.compareSets(stringsA, stringsB, false);
-	// 	}
-	// );
+	private static AbstractClassifier numericConstants = new AbstractClassifier("numeric constants", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+			if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
 
-	// private static AbstractClassifier numericConstants = new AbstractClassifier("numeric constants", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-	// 		if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
+			HashSet<int> intsA = new();
+			HashSet<int> intsB = new();
+			HashSet<long> longsA = new();
+			HashSet<long> longsB = new();
+			HashSet<float> floatsA = new();
+			HashSet<float> floatsB = new();
+			HashSet<double> doublesA = new();
+			HashSet<double> doublesB = new();
 
-	// 		HashSet<int> intsA = new();
-	// 		HashSet<int> intsB = new();
-	// 		HashSet<long> longsA = new();
-	// 		HashSet<long> longsB = new();
-	// 		HashSet<float> floatsA = new();
-	// 		HashSet<float> floatsB = new();
-	// 		HashSet<double> doublesA = new();
-	// 		HashSet<double> doublesB = new();
+			ClassifierUtil.extractNumbers(methodA.cecilMethod, intsA, longsA, floatsA, doublesA);
+			ClassifierUtil.extractNumbers(methodB.cecilMethod, intsB, longsB, floatsB, doublesB);
 
-	// 		ClassifierUtil.extractNumbers(methodA.getAsmNode(), intsA, longsA, floatsA, doublesA);
-	// 		ClassifierUtil.extractNumbers(methodB.getAsmNode(), intsB, longsB, floatsB, doublesB);
-
-	// 		return (ClassifierUtil.compareSets(intsA, intsB, false)
-	// 				+ ClassifierUtil.compareSets(longsA, longsB, false)
-	// 				+ ClassifierUtil.compareSets(floatsA, floatsB, false)
-	// 				+ ClassifierUtil.compareSets(doublesA, doublesB, false)) / 4.0;
-	// 	}
-	// );
+			return (ClassifierUtil.compareSets(intsA, intsB, false)
+					+ ClassifierUtil.compareSets(longsA, longsB, false)
+					+ ClassifierUtil.compareSets(floatsA, floatsB, false)
+					+ ClassifierUtil.compareSets(doublesA, doublesB, false)) / 4.0;
+		}
+	);
 
 	// private static AbstractClassifier parentMethods = new AbstractClassifier("parent methods", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
 	// 		return ClassifierUtil.compareMethodSets(methodA.getParents(), methodB.getParents(), true);

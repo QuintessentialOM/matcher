@@ -12,6 +12,8 @@ public class MethodInstance : MatchableMember {
 	public readonly MethodParamInstance[] args;
 	public TypeInstance returnType;
 
+	public readonly HashSet<string> strings = [];
+
 	[SetsRequiredMembers]
 	public MethodInstance(LocalClassEnv env, TypeInstance containingType, MethodDefinition cecilMethod, int position, bool isNameObfuscated) : base(env, containingType, cecilMethod, position, isNameObfuscated) {
 		MethodParamInstance[] args = new MethodParamInstance[cecilMethod.Parameters.Count];
