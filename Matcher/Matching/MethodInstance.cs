@@ -20,6 +20,9 @@ public class MethodInstance : MatchableMember {
 	public readonly HashSet<FieldInstance> fieldWriteRefs = [];
 	public readonly HashSet<TypeInstance> typeRefs = [];
 
+	public readonly HashSet<MethodInstance> parents = [];
+	public readonly HashSet<MethodInstance> children = [];
+
 	[SetsRequiredMembers]
 	public MethodInstance(LocalClassEnv env, TypeInstance containingType, MethodDefinition cecilMethod, int position, bool isNameObfuscated) : base(env, containingType, cecilMethod, position, isNameObfuscated) {
 		MethodParamInstance[] args = new MethodParamInstance[cecilMethod.Parameters.Count];

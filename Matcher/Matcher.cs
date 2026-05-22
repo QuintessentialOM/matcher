@@ -78,6 +78,13 @@ public class Matcher {
 		foreach (var type in envB.types.Values.ToList()) {
 			InitTypeC(type);
 		}
+
+		foreach (var type in envA.types.Values.ToList()) {
+			InitTypeD(type);
+		}
+		foreach (var type in envB.types.Values.ToList()) {
+			InitTypeD(type);
+		}
 		MatchUnobfuscated();
 	}
 
@@ -372,7 +379,7 @@ public class Matcher {
 			}
 
 			if (cls.baseType != null) toCheck.Enqueue(cls.baseType);
-			cls.interfaces.ForEach(iface => toCheck.Append(iface));
+			cls.interfaces.ForEach(toCheck.Enqueue);
 		}
 	}
 
@@ -380,6 +387,80 @@ public class Matcher {
 		// TODO handle case where cecilMethod == null
 		return method.cecilMethod == null || method.cecilMethod.IsStatic || method.cecilMethod.IsPrivate;
 	}
+
+	private void InitTypeD(TypeInstance cls) {
+		// assert cls.initStep == 3;
+
+		Queue<TypeInstance> toCheck = new();
+		HashSet<TypeInstance> checked_ = new();
+		HashSet<MethodHierarchyData> nameObfChecked = new();
+
+		foreach (MethodInstance method in cls.methodsOrdered) {
+			// assert method.hierarchyData != null;
+
+			
+			if (method.hierarchyData!.members.Count > 1) { // may have parent/child methods
+				determineMethodRelations(method, toCheck, checked_);
+
+				// No idea why fabric matcher tracks name obfuscation state - shouldn't this be the same for all methods in a hierarchy, since they all have the same name??
+				// // update name obfuscated state if not done yet, the name is only obfuscated if it is for all hierarchy members
+				// if (nameObfChecked.add(method.hierarchyData) && method.hierarchyData.nameObfuscated) {
+				// 	for (MethodInstance m : method.hierarchyData.getMembers()) {
+				// 		if (!m.nameObfuscatedLocal) {
+				// 			method.hierarchyData.nameObfuscated = false;
+				// 			break;
+				// 		}
+				// 	}
+				// }
+			}
+
+			// determineMethodType(method);
+			//Analysis.analyzeMethod(method, common);
+		}
+	}
+
+	private static void determineMethodRelations(MethodInstance method, Queue<TypeInstance> toCheck, HashSet<TypeInstance> checked_) {
+		// if (method.origName.equals("<init>") || method.origName.equals("<clinit>")) return;
+		if (method.getName() == ".ctor") return;
+		if (isHierarchyBarrier(method)) return;
+
+		if (method.containingType.baseType != null) toCheck.Enqueue(method.containingType.baseType);
+		method.containingType.interfaces.ForEach(toCheck.Enqueue);
+		TypeInstance cls;
+
+		while (toCheck.Count > 0) {
+			cls = toCheck.Dequeue();
+			if (!checked_.Add(cls)) continue;
+
+			MethodInstance? m = cls.methodsById!.GetValueOrDefault(method.getId(), null);
+
+			if (m != null && !isHierarchyBarrier(m)) { // skips over private or static methods
+				method.parents.Add(m);
+				m.children.Add(method);
+			} else {
+				if (cls.baseType != null) toCheck.Enqueue(cls.baseType);
+				cls.interfaces.ForEach(toCheck.Enqueue);
+			}
+		}
+
+		checked_.Clear();
+	}
+
+	// private void determineMethodType(MethodInstance method) {
+	// 	MethodType type;
+
+	// 	if (method.getId().startsWith("<clinit>")) {
+	// 		type = MethodType.CLASS_INIT;
+	// 	} else if (method.getId().startsWith("<init>")) {
+	// 		type = MethodType.CONSTRUCTOR;
+	// 	} else if (isLambdaMethod(method)) {
+	// 		type = MethodType.LAMBDA_IMPL;
+	// 	} else {
+	// 		type = MethodType.OTHER;
+	// 	}
+
+	// 	method.type = type;
+	// }
 
 	private void MatchUnobfuscated() {
 		foreach (var typeName in envA.types.Keys) {
