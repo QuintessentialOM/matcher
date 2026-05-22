@@ -10,15 +10,15 @@ public class MethodClassifier {
 		addClassifier(argTypes, 10);
 		addClassifier(retType, 5);
 		// addClassifier(signature, 5);
-		// addClassifier(classRefs, 3);
+		addClassifier(classRefs, 3);
 		addClassifier(stringConstants, 5);
 		addClassifier(numericConstants, 5);
 		// addClassifier(parentMethods, 10);
 		// addClassifier(childMethods, 3);
-		// addClassifier(inReferences, 6);
-		// addClassifier(outReferences, 6);
-		// addClassifier(fieldReads, 5);
-		// addClassifier(fieldWrites, 5);
+		addClassifier(inReferences, 6);
+		addClassifier(outReferences, 6);
+		addClassifier(fieldReads, 5);
+		addClassifier(fieldWrites, 5);
 		addClassifier(position, 3);
 		// addClassifier(code, 12, ClassifierLevel.Full, ClassifierLevel.Extra);
 		// addClassifier(inRefsBci, 6, ClassifierLevel.Extra);
@@ -146,10 +146,10 @@ public class MethodClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier classRefs = new AbstractClassifier("class refs", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-	// 		return ClassifierUtil.compareClassSets(methodA.getClassRefs(), methodB.getClassRefs(), true);
-	// 	}
-	// );
+	private static AbstractClassifier classRefs = new AbstractClassifier("class refs", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+			return ClassifierUtil.compareClassSets(methodA.typeRefs, methodB.typeRefs, true);
+		}
+	);
 
 	private static AbstractClassifier stringConstants = new AbstractClassifier("string constants", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
 			if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
@@ -190,25 +190,25 @@ public class MethodClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier outReferences = new AbstractClassifier("out references", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-	// 		return ClassifierUtil.compareMethodSets(methodA.getRefsOut(), methodB.getRefsOut(), true);
-	// 	}
-	// );
+	private static AbstractClassifier outReferences = new AbstractClassifier("out references", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+			return ClassifierUtil.compareMethodSets(methodA.refsOut, methodB.refsOut, true);
+		}
+	);
 
-	// private static AbstractClassifier inReferences = new AbstractClassifier("in references", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-	// 		return ClassifierUtil.compareMethodSets(methodA.getRefsIn(), methodB.getRefsIn(), true);
-	// 	}
-	// );
+	private static AbstractClassifier inReferences = new AbstractClassifier("in references", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+			return ClassifierUtil.compareMethodSets(methodA.refsIn, methodB.refsIn, true);
+		}
+	);
 
-	// private static AbstractClassifier fieldReads = new AbstractClassifier("field reads", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-	// 		return ClassifierUtil.compareFieldSets(methodA.getFieldReadRefs(), methodB.getFieldReadRefs(), true);
-	// 	}
-	// );
+	private static AbstractClassifier fieldReads = new AbstractClassifier("field reads", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+			return ClassifierUtil.compareFieldSets(methodA.fieldReadRefs, methodB.fieldReadRefs, true);
+		}
+	);
 
-	// private static AbstractClassifier fieldWrites = new AbstractClassifier("field writes", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-	// 		return ClassifierUtil.compareFieldSets(methodA.getFieldWriteRefs(), methodB.getFieldWriteRefs(), true);
-	// 	}
-	// );
+	private static AbstractClassifier fieldWrites = new AbstractClassifier("field writes", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+			return ClassifierUtil.compareFieldSets(methodA.fieldWriteRefs, methodB.fieldWriteRefs, true);
+		}
+	);
 
 	private static AbstractClassifier position = new AbstractClassifier("position", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
 			return ClassifierUtil.classifyPosition(methodA, methodB, method => method.position, (m, idx) => m.containingType.methodsOrdered[idx], f => f.containingType.methodsOrdered);

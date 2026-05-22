@@ -30,14 +30,6 @@ public class ClassifierUtil {
 		}
 	}
 
-	public static bool checkPotentialEquality(MatchableMember a, MatchableMember b) {
-		if (a is MethodInstance) {
-			return checkPotentialEquality((MethodInstance) a, (MethodInstance) b);
-		} else {
-			return checkPotentialEquality((FieldInstance) a, (FieldInstance) b);
-		}
-	}
-
 	public static bool checkPotentialEquality(MethodInstance a, MethodInstance b) {
 		if (a == b) return true;
 		if (a.getMatch() != null) return a.getMatch() == b;

@@ -1,3 +1,4 @@
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -62,6 +63,20 @@ public class Matcher {
 		}
 		foreach (var type in envB.types.Values.ToList()) {
 			InitTypeA(type, envB);
+		}
+
+		foreach (var type in envA.types.Values.ToList()) {
+			InitTypeB(type, envA);
+		}
+		foreach (var type in envB.types.Values.ToList()) {
+			InitTypeB(type, envB);
+		}
+
+		foreach (var type in envA.types.Values.ToList()) {
+			InitTypeC(type);
+		}
+		foreach (var type in envB.types.Values.ToList()) {
+			InitTypeC(type);
 		}
 		MatchUnobfuscated();
 	}
@@ -169,6 +184,201 @@ public class Matcher {
 			ifaceInstance.implementedBy.Add(cls);
 			cls.interfaces.Add(ifaceInstance);
 		}
+	}
+
+	private void InitTypeB(TypeInstance cls, LocalClassEnv env) {
+		foreach (MethodInstance method in cls.methodsOrdered) {
+			processMethodInsns(env, method);
+		}
+	}
+
+	private void processMethodInsns(LocalClassEnv env, MethodInstance method) {
+		// if (!method.isReal()) { // artificial method to capture calls to types with incomplete/unknown hierarchy/super type method info
+		// 	logger.debug("Skipping empty method {}", method);
+		// 	return;
+		// }
+
+		if (method.cecilMethod == null || method.cecilMethod.Body == null || method.cecilMethod.Body.Instructions == null) {
+			return;
+		}
+
+		foreach (var instr in method.cecilMethod.Body.Instructions) {
+			if (instr == null) continue;
+			// TODO does this cover all (non-dynamic) method invocations? does it include calling ctors?
+			if (instr.Operand is MethodReference mref/* && !mref.IsWindowsRuntimeProjection*/) {
+				handleMethodInvocation(env, method, mref.DeclaringType.Name, mref.Name, null); // TODO desc
+			}
+
+			if (instr.Operand is FieldReference fref) {
+				var owner = env.getCreateTypeInstance(fref.DeclaringType.Name);
+				var fieldInstance = owner.getField(fref.Name, fref.FieldType.Name);
+				if (fieldInstance == null) {
+					continue; // TODO
+				}
+				// TODO field reads and field address accesses are currently treated the same. probably shouldn't do that?
+				if (instr.OpCode == OpCodes.Stfld || instr.OpCode == OpCodes.Stsfld) {
+					fieldInstance.writeRefs.Add(method);
+					method.fieldWriteRefs.Add(fieldInstance);
+				} else {
+					fieldInstance.readRefs.Add(method);
+					method.fieldReadRefs.Add(fieldInstance);
+				}
+				owner.methodTypeRefs.Add(method);
+				method.typeRefs.Add(owner);
+			}
+
+
+			// switch (ain.getType()) {
+			// case AbstractInsnNode.METHOD_INSN: {
+			// 	MethodInsnNode in = (MethodInsnNode) ain;
+			// 	handleMethodInvocation(method,
+			// 			in.owner, in.name, in.desc,
+			// 			Util.isCallToInterface(in), ain.getOpcode() == Opcodes.INVOKESTATIC);
+			// 	break;
+			// }
+			// case AbstractInsnNode.FIELD_INSN: {
+			// 	FieldInsnNode in = (FieldInsnNode) ain;
+			// 	ClassInstance owner = getCreateClassInstance(ClassInstance.getId(in.owner));
+			// 	FieldInstance dst = owner.resolveField(in.name, in.desc);
+
+			// 	if (dst == null) { // unknown field, create a synthetic one
+			// 		dst = new FieldInstance(owner, in.name, in.desc, ain.getOpcode() == Opcodes.GETSTATIC || ain.getOpcode() == Opcodes.PUTSTATIC);
+			// 		owner.addField(dst);
+			// 	}
+
+			// 	if (ain.getOpcode() == Opcodes.GETSTATIC || ain.getOpcode() == Opcodes.GETFIELD) {
+			// 		dst.readRefs.add(method);
+			// 		method.fieldReadRefs.add(dst);
+			// 	} else {
+			// 		dst.writeRefs.add(method);
+			// 		method.fieldWriteRefs.add(dst);
+			// 	}
+
+			// 	dst.cls.methodTypeRefs.add(method);
+			// 	method.classRefs.add(dst.cls);
+
+			// 	break;
+			// }
+			// case AbstractInsnNode.TYPE_INSN: {
+			// 	TypeInsnNode tin = (TypeInsnNode) ain;
+			// 	ClassInstance dst = getCreateClassInstance(ClassInstance.getId(tin.desc));
+
+			// 	dst.methodTypeRefs.add(method);
+			// 	method.classRefs.add(dst);
+
+			// 	break;
+			// }
+			// case AbstractInsnNode.INVOKE_DYNAMIC_INSN: {
+			// 	InvokeDynamicInsnNode in = (InvokeDynamicInsnNode) ain;
+			// 	Handle impl = Util.getTargetHandle(in.bsm, in.bsmArgs);
+			// 	if (impl == null) break;
+
+			// 	switch (impl.getTag()) {
+			// 	case Opcodes.H_INVOKEVIRTUAL:
+			// 	case Opcodes.H_INVOKESTATIC:
+			// 	case Opcodes.H_INVOKESPECIAL:
+			// 	case Opcodes.H_NEWINVOKESPECIAL:
+			// 	case Opcodes.H_INVOKEINTERFACE:
+			// 		handleMethodInvocation(method,
+			// 				impl.getOwner(), impl.getName(), impl.getDesc(),
+			// 				Util.isCallToInterface(impl), impl.getTag() == Opcodes.H_INVOKESTATIC);
+			// 		break;
+			// 	default:
+			// 		logger.warn("Unexpected impl tag: {}", impl.getTag());
+			// 	}
+
+			// 	break;
+			// }
+			// }
+		}
+	}
+
+	private void handleMethodInvocation(LocalClassEnv env, MethodInstance method, string rawOwner, string name, string? desc) {
+		MethodInstance dst = resolveMethod(env, rawOwner, name, desc, true)!;
+		if (dst == null) return; // TODO
+
+		dst.refsIn.Add(method);
+		method.refsOut.Add(dst);
+		dst.containingType.methodTypeRefs.Add(method);
+		method.typeRefs.Add(dst.containingType);
+	}
+
+	private MethodInstance? resolveMethod(LocalClassEnv env, string owner, string name, string? desc, bool create) {
+		TypeInstance? cls = env.getCreateTypeInstance(owner, create);
+		if (cls == null) return null;
+
+		MethodInstance? ret = cls.getMethod(name, desc);
+
+		if (ret == null && create) {
+			// TODO
+			// logger.trace("Creating synthetic method {}/{}{}", owner, name, desc);
+
+			// ret = new MethodInstance(env, cls, name, desc, isStatic);
+			// cls.addMethod(ret);
+		}
+
+		return ret;
+	}
+
+	private static void InitTypeC(TypeInstance cls) {
+		// assert cls.initStep == 2;
+		// cls.initStep = 3;
+
+		/* Determine which methods share the same hierarchy by grouping all methods within a
+		 * bottom-up class hierarchy by id.
+		 *
+		 * Methods are part of the same hierarchy if:
+		 * - their id matches
+		 * - neither is private or static
+		 * - every methods's owner is part of a set of 2+ classes/interfaces where a class or
+		 *   interface exists that is assignable to them
+		 * - all of these owner sets are linked by sharing a class/interface (potentially indirectly) */
+		if (cls.childTypes.Count > 0 || cls.implementedBy.Count > 0) return; // visiting only classes that aren't being extended is sufficient to visit every method
+
+		Dictionary<string, MethodInstance> methods = [];
+		Queue<TypeInstance> toCheck = new();
+		toCheck.Enqueue(cls);
+
+		while (toCheck.Count > 0) {
+			cls = toCheck.Dequeue();
+			foreach (MethodInstance method in cls.methodsOrdered) {
+				MethodInstance? prev;
+
+				if (isHierarchyBarrier(method)) {
+					if (method.hierarchyData == null) {
+						method.hierarchyData = new MethodHierarchyData();
+						method.hierarchyData.members.Add(method);
+					}
+				} else if ((prev = methods!.GetValueOrDefault(method.getId(), null)) != null) {
+					if (method.hierarchyData == null) {
+						method.hierarchyData = prev.hierarchyData;
+						method.hierarchyData!.members.Add(method);
+					} else if (method.hierarchyData != prev.hierarchyData) {
+						foreach (MethodInstance m in prev.hierarchyData!.members) {
+							method.hierarchyData.members.Add(m);
+							m.hierarchyData = method.hierarchyData;
+						}
+					}
+				} else {
+					methods[method.getId()] = method;
+
+					if (method.hierarchyData == null) {
+						method.hierarchyData = new MethodHierarchyData();
+						method.hierarchyData.members.Add(method);
+					}
+				}
+
+				// assert method.hierarchyData != null;
+			}
+
+			if (cls.baseType != null) toCheck.Enqueue(cls.baseType);
+			cls.interfaces.ForEach(iface => toCheck.Append(iface));
+		}
+	}
+
+	private static bool isHierarchyBarrier(MethodInstance method) {
+		// TODO handle case where cecilMethod == null
+		return method.cecilMethod == null || method.cecilMethod.IsStatic || method.cecilMethod.IsPrivate;
 	}
 
 	private void MatchUnobfuscated() {
@@ -522,13 +732,13 @@ public class Matcher {
 		autoMatchLevel(ClassifierLevel.Extra, progressReceiver);
 		Console.WriteLine($"extra {getStatus(true)}");
 
-		bool matchedAny;
+		// bool matchedAny;
 
-		do {
-			matchedAny = autoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
-			Console.WriteLine($"args {getStatus(true)}");
-			// matchedAny |= autoMatchMethodVars(ClassifierLevel.Full, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
-		} while (matchedAny);
+		// do {
+		// 	matchedAny = autoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
+		// 	Console.WriteLine($"args {getStatus(true)}");
+		// 	// matchedAny |= autoMatchMethodVars(ClassifierLevel.Full, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
+		// } while (matchedAny);
 	}
 
 	private void autoMatchLevel(ClassifierLevel level, Action<double> progressReceiver) {

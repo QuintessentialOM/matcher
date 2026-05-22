@@ -6,8 +6,8 @@ public class FieldClassifier {
 		addClassifier(accessFlags, 4);
 		addClassifier(type, 10);
 		// addClassifier(signature, 5);
-		// addClassifier(readReferences, 6);
-		// addClassifier(writeReferences, 6);
+		addClassifier(readReferences, 6);
+		addClassifier(writeReferences, 6);
 		addClassifier(position, 3);
 		// addClassifier(initValue, 7);
 		// addClassifier(initStrings, 8);
@@ -92,15 +92,15 @@ public class FieldClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier readReferences = new AbstractClassifier("read references", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
-	// 		return ClassifierUtil.compareMethodSets(fieldA.getReadRefs(), fieldB.getReadRefs(), true);
-	// 	}
-	// );
+	private static AbstractClassifier readReferences = new AbstractClassifier("read references", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
+			return ClassifierUtil.compareMethodSets(fieldA.readRefs, fieldB.readRefs, true);
+		}
+	);
 
-	// private static AbstractClassifier writeReferences = new AbstractClassifier("write references", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
-	// 		return ClassifierUtil.compareMethodSets(fieldA.getWriteRefs(), fieldB.getWriteRefs(), true);
-	// 	}
-	// );
+	private static AbstractClassifier writeReferences = new AbstractClassifier("write references", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
+			return ClassifierUtil.compareMethodSets(fieldA.writeRefs, fieldB.writeRefs, true);
+		}
+	);
 
 	private static AbstractClassifier position = new AbstractClassifier("position", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
 			/*if (fieldA.position == fieldB.position) return 1;

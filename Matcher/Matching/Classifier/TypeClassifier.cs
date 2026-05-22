@@ -1,3 +1,6 @@
+using System.Linq;
+using Mono.Cecil;
+
 namespace Matcher.Matching.Classifier;
 
 public class TypeClassifier {
@@ -14,16 +17,16 @@ public class TypeClassifier {
 		addClassifier(methodCount, 3);
 		addClassifier(fieldCount, 3);
 		addClassifier(hierarchySiblings, 2);
-		// addClassifier(similarMethods, 10);
-		// addClassifier(outReferences, 6);
-		// addClassifier(inReferences, 6);
+		addClassifier(similarMethods, 10);
+		addClassifier(outReferences, 6);
+		addClassifier(inReferences, 6);
 		addClassifier(stringConstants, 8);
 		addClassifier(numericConstants, 6);
-		// addClassifier(methodOutReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		// addClassifier(methodInReferences, 6, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		// addClassifier(fieldReadReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		// addClassifier(fieldWriteReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		// addClassifier(membersFull, 10, ClassifierLevel.Full, ClassifierLevel.Extra);
+		addClassifier(methodOutReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		addClassifier(methodInReferences, 6, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		addClassifier(fieldReadReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		addClassifier(fieldWriteReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		addClassifier(membersFull, 10, ClassifierLevel.Full, ClassifierLevel.Extra);
 		// addClassifier(inRefsBci, 6, ClassifierLevel.Extra);
 	}
 
@@ -163,176 +166,177 @@ public class TypeClassifier {
 		}
 	);
 
-	// private static AbstractClassifier similarMethods = new AbstractClassifier("similar methods", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
-	// 		if (clsA.methodsById.Count == 0 && clsB.methodsById.Count == 0) return 1;
-	// 		if (clsA.methodsById.Count == 0 || clsB.methodsById.Count == 0) return 0;
+	private static AbstractClassifier similarMethods = new AbstractClassifier("similar methods", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
+			if (clsA.methodsById.Count == 0 && clsB.methodsById.Count == 0) return 1;
+			if (clsA.methodsById.Count == 0 || clsB.methodsById.Count == 0) return 0;
 
-	// 		ISet<MethodInstance> methodsB = Util.newIdentityHashSet(Arrays.asList(clsB.methodsById.Values));
-	// 		double totalScore = 0;
-	// 		MethodInstance bestMatch = null;
-	// 		double bestScore = 0;
+			HashSet<MethodInstance> methodsB = [.. clsB.methodsById.Values];
+			double totalScore = 0;
+			MethodInstance? bestMatch = null;
+			double bestScore = 0;
 
-	// 		for (MethodInstance methodA : clsA.methodsById.Values) {
-	// 			{
-	// 				mBLoop: for (MethodInstance methodB : methodsB) {
-	// 					if (!ClassifierUtil.checkPotentialEquality(methodA, methodB)) continue;
-	// 					if (!ClassifierUtil.checkPotentialEquality(methodA.getRetType(), methodB.getRetType())) continue;
+			foreach (MethodInstance methodA in clsA.methodsById.Values) {
+				{
+					foreach (MethodInstance methodB in methodsB) {
+						if (!ClassifierUtil.checkPotentialEquality(methodA, methodB)) continue;
+						if (!ClassifierUtil.checkPotentialEquality(methodA.returnType, methodB.returnType)) continue;
 
-	// 					MethodVarInstance[] argsA = methodA.getArgs();
-	// 					MethodVarInstance[] argsB = methodB.getArgs();
-	// 					if (argsA.Length != argsB.Length) continue;
+						MethodParamInstance[] argsA = methodA.args;
+						MethodParamInstance[] argsB = methodB.args;
+						if (argsA.Length != argsB.Length) continue;
 
-	// 					for (int i = 0; i < argsA.Length; i++) {
-	// 						TypeInstance argA = argsA[i].getType();
-	// 						TypeInstance argB = argsB[i].getType();
+						for (int i = 0; i < argsA.Length; i++) {
+							TypeInstance argA = argsA[i].paramType;
+							TypeInstance argB = argsB[i].paramType;
 
-	// 						if (!ClassifierUtil.checkPotentialEquality(argA, argB)) {
-	// 							continue mBLoop;
-	// 						}
-	// 					}
+							if (!ClassifierUtil.checkPotentialEquality(argA, argB)) {
+								goto mBLoop_continue;
+							}
+						}
 
-	// 					MethodNode asmNodeA = methodA.getAsmNode();
-	// 					MethodNode asmNodeB = methodB.getAsmNode();
-	// 					double score;
+						MethodDefinition asmNodeA = methodA.cecilMethod;
+						MethodDefinition asmNodeB = methodB.cecilMethod;
+						double score;
 
-	// 					if (asmNodeA == null || asmNodeB == null) {
-	// 						score = asmNodeA == null && asmNodeB == null ? 1 : 0;
-	// 					} else {
-	// 						score = ClassifierUtil.compareCounts(asmNodeA.instructions.size(), asmNodeB.instructions.size());
-	// 					}
+						if (asmNodeA == null || asmNodeB == null || asmNodeA.Body == null || asmNodeB.Body == null) {
+							score = (asmNodeA == null || asmNodeA.Body == null) && (asmNodeB == null || asmNodeB.Body == null) ? 1 : 0;
+						} else {
+							score = ClassifierUtil.compareCounts(asmNodeA.Body.Instructions.Count, asmNodeB.Body.Instructions.Count);
+						}
 
-	// 					if (score > bestScore) {
-	// 						bestScore = score;
-	// 						bestMatch = methodB;
-	// 					}
-	// 				}
-	// 			}
+						if (score > bestScore) {
+							bestScore = score;
+							bestMatch = methodB;
+						}
+						mBLoop_continue: {}
+					}
+				}
 
-	// 			if (bestMatch != null) {
-	// 				totalScore += bestScore;
-	// 				methodsB.remove(bestMatch);
-	// 			}
-	// 		}
+				if (bestMatch != null) {
+					totalScore += bestScore;
+					methodsB.Remove(bestMatch);
+				}
+			}
 
-	// 		return totalScore / Math.Max(clsA.methodsById.Count, clsB.methodsById.Count);
-	// 	}
-	// );
+			return totalScore / Math.Max(clsA.methodsById.Count, clsB.methodsById.Count);
+		}
+	);
 
-	// private static AbstractClassifier outReferences = new AbstractClassifier("out references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
-	// 		ISet<TypeInstance> refsA = getOutRefs(clsA);
-	// 		ISet<TypeInstance> refsB = getOutRefs(clsB);
+	private static AbstractClassifier outReferences = new AbstractClassifier("out references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
+			HashSet<TypeInstance> refsA = getOutRefs(clsA);
+			HashSet<TypeInstance> refsB = getOutRefs(clsB);
 
-	// 		return ClassifierUtil.compareClassSets(refsA, refsB, false);
-	// 	}
-	// );
+			return ClassifierUtil.compareClassSets(refsA, refsB, false);
+		}
+	);
 
-	// private static ISet<TypeInstance> getOutRefs(TypeInstance cls) {
-	// 	ISet<TypeInstance> ret = Util.newIdentityHashSet();
+	private static HashSet<TypeInstance> getOutRefs(TypeInstance cls) {
+		HashSet<TypeInstance> ret = [];
 
-	// 	foreach (MethodInstance method in cls.methodsById.Values) {
-	// 		ret.addAll(method.getClassRefs());
-	// 	}
+		foreach (MethodInstance method in cls.methodsById.Values) {
+			ret.UnionWith(method.typeRefs);
+		}
 
-	// 	foreach (FieldInstance field in cls.fieldsById.Values) {
-	// 		ret.add(field.getType());
-	// 	}
+		foreach (FieldInstance field in cls.fieldsById.Values) {
+			ret.Add(field.containingType);
+		}
 
-	// 	return ret;
-	// }
+		return ret;
+	}
 
-	// private static AbstractClassifier inReferences = new AbstractClassifier("in references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
-	// 		ISet<TypeInstance> refsA = getInRefs(clsA);
-	// 		ISet<TypeInstance> refsB = getInRefs(clsB);
+	private static AbstractClassifier inReferences = new AbstractClassifier("in references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
+			HashSet<TypeInstance> refsA = getInRefs(clsA);
+			HashSet<TypeInstance> refsB = getInRefs(clsB);
 
-	// 		return ClassifierUtil.compareClassSets(refsA, refsB, false);
-	// 	}
-	// );
+			return ClassifierUtil.compareClassSets(refsA, refsB, false);
+		}
+	);
 
-	// private static ISet<TypeInstance> getInRefs(TypeInstance cls) {
-	// 	ISet<TypeInstance> ret = Util.newIdentityHashSet();
+	private static HashSet<TypeInstance> getInRefs(TypeInstance cls) {
+		HashSet<TypeInstance> ret = [];
 
-	// 	foreach (MethodInstance method in cls.getMethodTypeRefs()) {
-	// 		ret.add(method.getCls());
-	// 	}
+		foreach (MethodInstance method in cls.methodTypeRefs) {
+			ret.Add(method.containingType);
+		}
 
-	// 	foreach (FieldInstance field in cls.getFieldTypeRefs()) {
-	// 		ret.add(field.getCls());
-	// 	}
+		foreach (FieldInstance field in cls.fieldTypeRefs) {
+			ret.Add(field.containingType);
+		}
 
-	// 	return ret;
-	// }
+		return ret;
+	}
 
-	// private static AbstractClassifier methodOutReferences = new AbstractClassifier("method out references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
-	// 		ISet<MethodInstance> refsA = getMethodOutRefs(clsA);
-	// 		ISet<MethodInstance> refsB = getMethodOutRefs(clsB);
+	private static AbstractClassifier methodOutReferences = new AbstractClassifier("method out references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
+			HashSet<MethodInstance> refsA = getMethodOutRefs(clsA);
+			HashSet<MethodInstance> refsB = getMethodOutRefs(clsB);
 
-	// 		return ClassifierUtil.compareMethodSets(refsA, refsB, false);
-	// 	}
-	// );
+			return ClassifierUtil.compareMethodSets(refsA, refsB, false);
+		}
+	);
 
-	// private static ISet<MethodInstance> getMethodOutRefs(TypeInstance cls) {
-	// 	ISet<MethodInstance> ret = Util.newIdentityHashSet();
+	private static HashSet<MethodInstance> getMethodOutRefs(TypeInstance cls) {
+		HashSet<MethodInstance> ret = [];
 
-	// 	foreach (MethodInstance method in cls.methodsById.Values) {
-	// 		ret.addAll(method.getRefsOut());
-	// 	}
+		foreach (MethodInstance method in cls.methodsById.Values) {
+			ret.UnionWith(method.refsOut);
+		}
 
-	// 	return ret;
-	// }
+		return ret;
+	}
 
-	// private static AbstractClassifier methodInReferences = new AbstractClassifier("method in references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
-	// 		ISet<MethodInstance> refsA = getMethodInRefs(clsA);
-	// 		ISet<MethodInstance> refsB = getMethodInRefs(clsB);
+	private static AbstractClassifier methodInReferences = new AbstractClassifier("method in references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
+			HashSet<MethodInstance> refsA = getMethodInRefs(clsA);
+			HashSet<MethodInstance> refsB = getMethodInRefs(clsB);
 
-	// 		return ClassifierUtil.compareMethodSets(refsA, refsB, false);
-	// 	}
-	// );
+			return ClassifierUtil.compareMethodSets(refsA, refsB, false);
+		}
+	);
 
-	// private static ISet<MethodInstance> getMethodInRefs(TypeInstance cls) {
-	// 	ISet<MethodInstance> ret = Util.newIdentityHashSet();
+	private static HashSet<MethodInstance> getMethodInRefs(TypeInstance cls) {
+		HashSet<MethodInstance> ret = [];
 
-	// 	foreach (MethodInstance method in cls.methodsById.Values) {
-	// 		ret.addAll(method.getRefsIn());
-	// 	}
+		foreach (MethodInstance method in cls.methodsById.Values) {
+			ret.UnionWith(method.refsIn);
+		}
 
-	// 	return ret;
-	// }
+		return ret;
+	}
 
-	// private static AbstractClassifier fieldReadReferences = new AbstractClassifier("field read references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
-	// 		ISet<FieldInstance> refsA = getFieldReadRefs(clsA);
-	// 		ISet<FieldInstance> refsB = getFieldReadRefs(clsB);
+	private static AbstractClassifier fieldReadReferences = new AbstractClassifier("field read references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
+			HashSet<FieldInstance> refsA = getFieldReadRefs(clsA);
+			HashSet<FieldInstance> refsB = getFieldReadRefs(clsB);
 
-	// 		return ClassifierUtil.compareFieldSets(refsA, refsB, false);
-	// 	}
-	// );
+			return ClassifierUtil.compareFieldSets(refsA, refsB, false);
+		}
+	);
 
-	// private static ISet<FieldInstance> getFieldReadRefs(TypeInstance cls) {
-	// 	ISet<FieldInstance> ret = Util.newIdentityHashSet();
+	private static HashSet<FieldInstance> getFieldReadRefs(TypeInstance cls) {
+		HashSet<FieldInstance> ret = [];
 
-	// 	foreach (MethodInstance method in cls.methodsById.Values) {
-	// 		ret.addAll(method.getFieldReadRefs());
-	// 	}
+		foreach (MethodInstance method in cls.methodsById.Values) {
+			ret.UnionWith(method.fieldReadRefs);
+		}
 
-	// 	return ret;
-	// }
+		return ret;
+	}
 
-	// private static AbstractClassifier fieldWriteReferences = new AbstractClassifier("field write references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
-	// 		ISet<FieldInstance> refsA = getFieldWriteRefs(clsA);
-	// 		ISet<FieldInstance> refsB = getFieldWriteRefs(clsB);
+	private static AbstractClassifier fieldWriteReferences = new AbstractClassifier("field write references", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
+			HashSet<FieldInstance> refsA = getFieldWriteRefs(clsA);
+			HashSet<FieldInstance> refsB = getFieldWriteRefs(clsB);
 
-	// 		return ClassifierUtil.compareFieldSets(refsA, refsB, false);
-	// 	}
-	// );
+			return ClassifierUtil.compareFieldSets(refsA, refsB, false);
+		}
+	);
 
-	// private static ISet<FieldInstance> getFieldWriteRefs(TypeInstance cls) {
-	// 	ISet<FieldInstance> ret = Util.newIdentityHashSet();
+	private static HashSet<FieldInstance> getFieldWriteRefs(TypeInstance cls) {
+		HashSet<FieldInstance> ret = [];
 
-	// 	foreach (MethodInstance method in cls.methodsById.Values) {
-	// 		ret.addAll(method.getFieldWriteRefs());
-	// 	}
+		foreach (MethodInstance method in cls.methodsById.Values) {
+			ret.UnionWith(method.fieldWriteRefs);
+		}
 
-	// 	return ret;
-	// }
+		return ret;
+	}
 
 	private static AbstractClassifier stringConstants = new AbstractClassifier("string constants", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
 			return ClassifierUtil.compareSets(clsA.strings, clsB.strings, true);
@@ -359,51 +363,46 @@ public class TypeClassifier {
 		}
 	);
 
-	// private static AbstractClassifier membersFull = new AbstractClassifier("members full", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
-	// 		/*if (clsA.getName().equals("agl") && clsB.getName().equals("aht")) {
-	// 			Matcher.LOGGER.info();
-	// 		}*/
+	private static AbstractClassifier membersFull = new AbstractClassifier("members full", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
+			double absThreshold = 0.8;
+			double relThreshold = 0.08;
+			ClassifierLevel level = ClassifierLevel.Full;
+			double match = 0;
 
-	// 		// TODO was a "0." stripped here?
-	// 		double absThreshold = 08;
-	// 		double relThreshold = 008;
-	// 		ClassifierLevel level = ClassifierLevel.Full;
-	// 		double match = 0;
+			if (clsA.methodsById.Count > 0 && clsB.methodsById.Count > 0) {
+				double maxScore = MethodClassifier.getMaxScore(level);
 
-	// 		if (clsA.methodsById.Count > 0 && clsB.methodsById.Count > 0) {
-	// 			double maxScore = MethodClassifier.getMaxScore(level);
+				foreach (MethodInstance method in clsA.methodsById.Values) {
+					if (!method.isMatchable()) continue;
 
-	// 			foreach (MethodInstance method in clsA.methodsById.Values) {
-	// 				if (!method.isMatchable()) continue;
+					List<RankResult<MethodInstance>> ranking = MethodClassifier.rank(method, [.. clsB.methodsById.Values], level, env);
+					if (ClassifierUtil.checkRank(ranking, absThreshold, relThreshold, maxScore)) match += ClassifierUtil.getScore(ranking[0].score, maxScore);
+				}
+			}
 
-	// 				List<RankResult<MethodInstance>> ranking = MethodClassifier.rank(method, clsB.methodsById.Values, level, env);
-	// 				if (ClassifierUtil.checkRank(ranking, absThreshold, relThreshold, maxScore)) match += ClassifierUtil.getScore(ranking.get(0).getScore(), maxScore);
-	// 			}
-	// 		}
+			if (clsA.fieldsById.Count > 0 && clsB.fieldsById.Count > 0) {
+				double maxScore = FieldClassifier.getMaxScore(level);
 
-	// 		if (clsA.fieldsById.Count > 0 && clsB.fieldsById.Count > 0) {
-	// 			double maxScore = FieldClassifier.getMaxScore(level);
+				foreach (FieldInstance field in clsA.fieldsById.Values) {
+					if (!field.isMatchable()) continue;
 
-	// 			foreach (FieldInstance field in clsA.fieldsById.Values) {
-	// 				if (!field.isMatchable()) continue;
+					List<RankResult<FieldInstance>> ranking = FieldClassifier.rank(field, [.. clsB.fieldsById.Values], level, env);
+					if (ClassifierUtil.checkRank(ranking, absThreshold, relThreshold, maxScore)) match += ClassifierUtil.getScore(ranking[0].score, maxScore);
+				}
+			}
 
-	// 				List<RankResult<FieldInstance>> ranking = FieldClassifier.rank(field, clsB.fieldsById.Values, level, env);
-	// 				if (ClassifierUtil.checkRank(ranking, absThreshold, relThreshold, maxScore)) match += ClassifierUtil.getScore(ranking.get(0).getScore(), maxScore);
-	// 			}
-	// 		}
+			int methods = Math.Max(clsA.methodsById.Count, clsB.methodsById.Count);
+			int fields = Math.Max(clsA.fieldsById.Count, clsB.fieldsById.Count);
 
-	// 		int methods = Math.Max(clsA.methodsById.Count, clsB.methodsById.Count);
-	// 		int fields = Math.Max(clsA.fieldsById.Count, clsB.fieldsById.Count);
+			if (methods == 0 && fields == 0) {
+				return 1;
+			} else {
+				// assert match <= methods + fields;
 
-	// 		if (methods == 0 && fields == 0) {
-	// 			return 1;
-	// 		} else {
-	// 			// assert match <= methods + fields;
-
-	// 			return match / (methods + fields);
-	// 		}
-	// 	}
-	// );
+				return match / (methods + fields);
+			}
+		}
+	);
 
 	// private static AbstractClassifier inRefsBci = new AbstractClassifier("in refs (bci)", (TypeInstance clsA, TypeInstance clsB, MatchingEnv env) => {
 	// 		int matched = 0;

@@ -12,6 +12,9 @@ public class FieldInstance : MatchableMember {
 	private bool matchable = true;
 	public TypeInstance fieldType;
 
+	public readonly HashSet<MethodInstance> readRefs = [];
+	public readonly HashSet<MethodInstance> writeRefs = [];
+
 	[SetsRequiredMembers]
 	public FieldInstance(LocalClassEnv env, TypeInstance containingType, FieldDefinition cecilField, int position, bool isNameObfuscated) : base(env, containingType, cecilField, position, isNameObfuscated) {
 		id = getId(cecilField.Name, cecilField.FieldType.Name);

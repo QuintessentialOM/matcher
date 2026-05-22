@@ -34,6 +34,9 @@ public class TypeInstance : MatchableMemberOrClass {
 	public readonly List<TypeInstance> interfaces = [];
 	public readonly List<TypeInstance> implementedBy = [];
 
+	public readonly HashSet<MethodInstance> methodTypeRefs = [];
+	public readonly HashSet<FieldInstance> fieldTypeRefs = [];
+
 	[SetsRequiredMembers]
 	public TypeInstance(LocalClassEnv env, TypeDefinition cecilType, bool isNameObfuscated) : this(env, cecilType, cecilType.Name, isNameObfuscated) {
 	}
@@ -113,7 +116,7 @@ public class TypeInstance : MatchableMemberOrClass {
 
 	public MethodInstance? getMethod(string name, string? desc) {
 		if (desc != null) {
-			return methodsById[MethodInstance.getId(name, desc)];
+			return methodsById.GetValueOrDefault(MethodInstance.getId(name, desc));
 		} else {
 			MethodInstance? ret = null;
 
@@ -131,7 +134,7 @@ public class TypeInstance : MatchableMemberOrClass {
 
 	public FieldInstance? getField(string name, string? desc) {
 		if (desc != null) {
-			return fieldsById[FieldInstance.getId(name, desc)];
+			return fieldsById.GetValueOrDefault(FieldInstance.getId(name, desc), null);
 		} else {
 			FieldInstance? ret = null;
 
