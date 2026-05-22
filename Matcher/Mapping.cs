@@ -5,15 +5,15 @@ namespace Matcher;
 public class Mappings {
 	public required string NamespaceA;
 	public required string NamespaceB;
-	public List<ClassMapping> Classes = new();
+	public List<ClassMapping> Classes = [];
 }
 
 public class ClassMapping {
 	public required string ClassNameA;
 	public string? ClassNameB;
-	public List<FieldMapping> Fields = new();
-	public List<MethodMapping> Methods = new();
-	public List<GenericParameterMapping> GenericParameters = new();
+	public List<FieldMapping> Fields = [];
+	public List<MethodMapping> Methods = [];
+	public List<GenericParameterMapping> GenericParameters = [];
 }
 
 public class FieldMapping {
@@ -26,8 +26,8 @@ public class MethodMapping {
 	public required string ReturnTypeA;
 	public required string MethodNameA;
 	public string? MethodNameB;
-	public List<MethodParameterMapping> Parameters = new();
-	public List<GenericParameterMapping> GenericParameters = new();
+	public List<MethodParameterMapping> Parameters = [];
+	public List<GenericParameterMapping> GenericParameters = [];
 }
 
 public class MethodParameterMapping {

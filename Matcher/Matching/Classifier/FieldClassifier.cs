@@ -1,14 +1,14 @@
 namespace Matcher.Matching.Classifier;
 
 public class FieldClassifier {
-	public static void init() {
-		addClassifier(fieldStaticCheck, 10);
-		addClassifier(accessFlags, 4);
-		addClassifier(type, 10);
+	public static void Init() {
+		AddClassifier(fieldStaticCheck, 10);
+		AddClassifier(accessFlags, 4);
+		AddClassifier(type, 10);
 		// addClassifier(signature, 5);
-		addClassifier(readReferences, 6);
-		addClassifier(writeReferences, 6);
-		addClassifier(position, 3);
+		AddClassifier(readReferences, 6);
+		AddClassifier(writeReferences, 6);
+		AddClassifier(position, 3);
 		// addClassifier(initValue, 7);
 		// addClassifier(initStrings, 8);
 		// addClassifier(initCode, 10, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
@@ -16,7 +16,7 @@ public class FieldClassifier {
 		// addClassifier(writeRefsBci, 6, ClassifierLevel.Extra);
 	}
 
-	public static void addClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
+	public static void AddClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
 		if (levels.Length == 0) levels = Enum.GetValues<ClassifierLevel>();
 
 		classifier.weight = weight;
@@ -24,34 +24,34 @@ public class FieldClassifier {
 		foreach (ClassifierLevel level in levels) {
 			if (!classifiers.ContainsKey(level)) classifiers[level] = [];
 			classifiers[level].Add(classifier);
-			maxScore[level] = getMaxScore(level) + weight;
+			maxScore[level] = GetMaxScore(level) + weight;
 		}
 	}
 
-	public static double getMaxScore(ClassifierLevel level) {
+	public static double GetMaxScore(ClassifierLevel level) {
 		return maxScore.GetValueOrDefault(level, 0);
 	}
 
-	public static List<RankResult<FieldInstance>> rank(FieldInstance src, FieldInstance[] dsts, ClassifierLevel level, MatchingEnv env) {
-		return rank(src, dsts, level, env, double.PositiveInfinity);
+	public static List<RankResult<FieldInstance>> Rank(FieldInstance src, FieldInstance[] dsts, ClassifierLevel level, MatchingEnv env) {
+		return Rank(src, dsts, level, env, double.PositiveInfinity);
 	}
 
-	public static List<RankResult<FieldInstance>> rank(FieldInstance src, FieldInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch) {
-		return ClassifierUtil.rank(src, dsts, classifiers.GetValueOrDefault(level, []), ClassifierUtil.checkPotentialEquality, env, maxMismatch);
+	public static List<RankResult<FieldInstance>> Rank(FieldInstance src, FieldInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch) {
+		return ClassifierUtil.Rank(src, dsts, classifiers.GetValueOrDefault(level, []), ClassifierUtil.CheckPotentialEquality, env, maxMismatch);
 	}
 
-	private static readonly Dictionary<ClassifierLevel, List<IClassifier<FieldInstance>>> classifiers = new();
-	private static readonly Dictionary<ClassifierLevel, double> maxScore = new();
+	private static readonly Dictionary<ClassifierLevel, List<IClassifier<FieldInstance>>> classifiers = [];
+	private static readonly Dictionary<ClassifierLevel, double> maxScore = [];
 
-	private static AbstractClassifier fieldStaticCheck = new AbstractClassifier("field static check", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
-			if (!checkAsmNodes(fieldA, fieldB)) return compareAsmNodes(fieldA, fieldB);
+	private static readonly AbstractClassifier fieldStaticCheck = new("field static check", (fieldA, fieldB, env) => {
+			if (!CheckAsmNodes(fieldA, fieldB)) return CompareAsmNodes(fieldA, fieldB);
 
-			return fieldA.cecilField.IsStatic == fieldB.cecilField.IsStatic ? 1 : 0;
+			return fieldA.CecilField.IsStatic == fieldB.CecilField.IsStatic ? 1 : 0;
 		}
 	);
 
-	private static AbstractClassifier accessFlags = new AbstractClassifier("access flags", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
-			if (!checkAsmNodes(fieldA, fieldB)) return compareAsmNodes(fieldA, fieldB);
+	private static readonly AbstractClassifier accessFlags = new("access flags", (fieldA, fieldB, env) => {
+			if (!CheckAsmNodes(fieldA, fieldB)) return CompareAsmNodes(fieldA, fieldB);
 
 			// int mask = (Opcodes.ACC_PUBLIC | Opcodes.ACC_PROTECTED | Opcodes.ACC_PRIVATE) | Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE | Opcodes.ACC_TRANSIENT | Opcodes.ACC_SYNTHETIC;
 			// int resultA = fieldA.getAsmNode().access & mask;
@@ -61,12 +61,12 @@ public class FieldClassifier {
 
 			int diff = 0;
 
-			bool hasSameAccess = (fieldA.cecilField.IsPublic == fieldB.cecilField.IsPublic)
-				&& (fieldA.cecilField.IsFamilyOrAssembly == fieldB.cecilField.IsFamilyOrAssembly)
-				&& (fieldA.cecilField.IsFamily == fieldB.cecilField.IsFamily)
-				&& (fieldA.cecilField.IsFamilyAndAssembly == fieldB.cecilField.IsFamilyAndAssembly)
-				&& (fieldA.cecilField.IsAssembly == fieldB.cecilField.IsAssembly)
-				&& (fieldA.cecilField.IsPrivate == fieldB.cecilField.IsPrivate);
+			bool hasSameAccess = (fieldA.CecilField.IsPublic == fieldB.CecilField.IsPublic)
+				&& (fieldA.CecilField.IsFamilyOrAssembly == fieldB.CecilField.IsFamilyOrAssembly)
+				&& (fieldA.CecilField.IsFamily == fieldB.CecilField.IsFamily)
+				&& (fieldA.CecilField.IsFamilyAndAssembly == fieldB.CecilField.IsFamilyAndAssembly)
+				&& (fieldA.CecilField.IsAssembly == fieldB.CecilField.IsAssembly)
+				&& (fieldA.CecilField.IsPrivate == fieldB.CecilField.IsPrivate);
 
 			if (!hasSameAccess) diff += 1;
 
@@ -76,12 +76,12 @@ public class FieldClassifier {
 		}
 	);
 
-	private static AbstractClassifier type = new AbstractClassifier("types", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
-			return ClassifierUtil.checkPotentialEquality(fieldA.containingType, fieldB.containingType) ? 1 : 0;
+	private static readonly AbstractClassifier type = new("types", (fieldA, fieldB, env) => {
+			return ClassifierUtil.CheckPotentialEquality(fieldA.ContainingType, fieldB.ContainingType) ? 1 : 0;
 		}
 	);
 
-	// private static AbstractClassifier signature = new AbstractClassifier("signature", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier signature = new("signature", (fieldA, fieldB, env) => {
 	// 		FieldSignature sigA = fieldA.getSignature();
 	// 		FieldSignature sigB = fieldB.getSignature();
 
@@ -92,28 +92,28 @@ public class FieldClassifier {
 	// 	}
 	// );
 
-	private static AbstractClassifier readReferences = new AbstractClassifier("read references", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
-			return ClassifierUtil.compareMethodSets(fieldA.readRefs, fieldB.readRefs, true);
+	private static readonly AbstractClassifier readReferences = new("read references", (fieldA, fieldB, env) => {
+			return ClassifierUtil.CompareMethodSets(fieldA.readRefs, fieldB.readRefs, true);
 		}
 	);
 
-	private static AbstractClassifier writeReferences = new AbstractClassifier("write references", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
-			return ClassifierUtil.compareMethodSets(fieldA.writeRefs, fieldB.writeRefs, true);
+	private static readonly AbstractClassifier writeReferences = new("write references", (fieldA, fieldB, env) => {
+			return ClassifierUtil.CompareMethodSets(fieldA.writeRefs, fieldB.writeRefs, true);
 		}
 	);
 
-	private static AbstractClassifier position = new AbstractClassifier("position", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
+	private static readonly AbstractClassifier position = new("position", (fieldA, fieldB, env) => {
 			/*if (fieldA.position == fieldB.position) return 1;
 
 			double relPosA = ClassifierUtil.getRelativePosition(fieldA.position, fieldA.cls.fields.size());
 			double relPosB = ClassifierUtil.getRelativePosition(fieldB.position, fieldB.cls.fields.size());
 
 			return 1 - Math.abs(relPosA - relPosB);*/
-			return ClassifierUtil.classifyPosition(fieldA, fieldB, field => field.position, (f, idx) => f.containingType.fieldsOrdered[idx], f => f.containingType.fieldsOrdered);
+			return ClassifierUtil.ClassifyPosition(fieldA, fieldB, field => field.Position, (f, idx) => f.ContainingType.fieldsOrdered[idx], f => f.ContainingType.fieldsOrdered);
 		}
 	);
 
-	// private static AbstractClassifier initValue = new AbstractClassifier("init value", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier initValue = new("init value", (fieldA, fieldB, env) => {
 	// 		if (!checkAsmNodes(fieldA, fieldB)) return compareAsmNodes(fieldA, fieldB);
 
 	// 		Object valA = fieldA.getAsmNode().value;
@@ -126,7 +126,7 @@ public class FieldClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier initStrings = new AbstractClassifier("init strings", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier initStrings = new("init strings", (fieldA, fieldB, env) => {
 	// 		List<AbstractInsnNode> initA = fieldA.getInitializer();
 	// 		List<AbstractInsnNode> initB = fieldB.getInitializer();
 
@@ -142,7 +142,7 @@ public class FieldClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier initCode = new AbstractClassifier("init code", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier initCode = new("init code", (fieldA, fieldB, env) => {
 	// 		List<AbstractInsnNode> initA = fieldA.getInitializer();
 	// 		List<AbstractInsnNode> initB = fieldB.getInitializer();
 
@@ -153,7 +153,7 @@ public class FieldClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier readRefsBci = new AbstractClassifier("read refs (bci)", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier readRefsBci = new("read refs (bci)", (fieldA, fieldB, env) => {
 	// 		String ownerA = fieldAf.containingType.getName();
 	// 		String nameA = fieldA.getName();
 	// 		String descA = fieldA.getDesc();
@@ -206,7 +206,7 @@ public class FieldClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier writeRefsBci = new AbstractClassifier("write refs (bci)", (FieldInstance fieldA, FieldInstance fieldB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier writeRefsBci = new("write refs (bci)", (fieldA, fieldB, env) => {
 	// 		String ownerA = fieldAf.containingType.getName();
 	// 		String nameA = fieldA.getName();
 	// 		String descA = fieldA.getDesc();
@@ -267,33 +267,28 @@ public class FieldClassifier {
 	// 			&& (fin.owner.equals(owner) || (target = field.getEnv().getClsByName(fin.owner)) != null && target.resolveField(name, desc) == field);
 	// }
 
-	private static bool checkAsmNodes(FieldInstance a, FieldInstance b) {
-		return a.cecilField != null && b.cecilField != null;
+	private static bool CheckAsmNodes(FieldInstance a, FieldInstance b) {
+		return a.CecilField != null && b.CecilField != null;
 	}
 
-	private static double compareAsmNodes(FieldInstance a, FieldInstance b) {
-		return a.cecilField == null && b.cecilField == null ? 1 : 0;
+	private static double CompareAsmNodes(FieldInstance a, FieldInstance b) {
+		return a.CecilField == null && b.CecilField == null ? 1 : 0;
 	}
 
-	public class AbstractClassifier : IClassifier<FieldInstance> {
-		private readonly string name;
+	public class AbstractClassifier(string name, Func<FieldInstance, FieldInstance, MatchingEnv, double> classifierFunc) : IClassifier<FieldInstance> {
+		private readonly string name = name;
 		public double weight; // probably shouldn't be public but I'm lazy and csharp nested types have different visibility rules so I can't just do private
-		private Func<FieldInstance, FieldInstance, MatchingEnv, double> classifierFunc;
+		private readonly Func<FieldInstance, FieldInstance, MatchingEnv, double> classifierFunc = classifierFunc;
 
-		public AbstractClassifier(string name, Func<FieldInstance, FieldInstance, MatchingEnv, double> classifierFunc) {
-			this.name = name;
-			this.classifierFunc = classifierFunc;
-		}
-
-		public String getName() {
+		public string GetName() {
 			return name;
 		}
 
-		public double getWeight() {
+		public double GetWeight() {
 			return weight;
 		}
 
-		public double getScore(FieldInstance a, FieldInstance b, MatchingEnv env) {
+		public double GetScore(FieldInstance a, FieldInstance b, MatchingEnv env) {
 			return classifierFunc.Invoke(a, b, env);
 		}
 	}

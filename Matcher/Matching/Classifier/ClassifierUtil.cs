@@ -5,43 +5,43 @@ namespace Matcher.Matching.Classifier;
 
 public class ClassifierUtil {
 	// TODO make literally anything in here care about generics
-	public static bool checkPotentialEquality(TypeInstance a, TypeInstance b) {
+	public static bool CheckPotentialEquality(TypeInstance a, TypeInstance b) {
 		if (a == b) return true;
-		if (a.getMatch() != null) return a.getMatch() == b;
-		if (b.getMatch() != null) return b.getMatch() == a;
-		if (!a.isMatchable() || !b.isMatchable()) return false;
+		if (a.GetMatch() != null) return a.GetMatch() == b;
+		if (b.GetMatch() != null) return b.GetMatch() == a;
+		if (!a.IsMatchable() || !b.IsMatchable()) return false;
 		// if (a.isArray() != b.isArray()) return false;
 		// if (a.isArray() && !checkPotentialEquality(a.getElementClass(), b.getElementClass())) return false;
-		if (!checkNameObfMatch(a, b)) return false;
+		if (!CheckNameObfMatch(a, b)) return false;
 
 		return true;
 	}
 
-	private static bool checkNameObfMatch(Matchable a, Matchable b) {
-		bool nameObfA = a.isNameObfuscated;
-		bool nameObfB = b.isNameObfuscated;
+	private static bool CheckNameObfMatch(Matchable a, Matchable b) {
+		bool nameObfA = a.IsNameObfuscated;
+		bool nameObfB = b.IsNameObfuscated;
 
 		if (nameObfA && nameObfB) { // both obf
 			return true;
 		} else if (nameObfA != nameObfB) { // one obf
 			return Matcher.assumeBothOrNoneObfuscated;
 		} else { // neither obf
-			return a.getName().Equals(b.getName());
+			return a.GetName().Equals(b.GetName());
 		}
 	}
 
-	public static bool checkPotentialEquality(MethodInstance a, MethodInstance b) {
+	public static bool CheckPotentialEquality(MethodInstance a, MethodInstance b) {
 		if (a == b) return true;
-		if (a.getMatch() != null) return a.getMatch() == b;
-		if (b.getMatch() != null) return b.getMatch() == a;
-		if (!a.isMatchable() || !b.isMatchable()) return false;
-		if (!checkPotentialEquality(a.containingType, b.containingType)) return false;
-		if (!checkNameObfMatch(a, b)) return false;
+		if (a.GetMatch() != null) return a.GetMatch() == b;
+		if (b.GetMatch() != null) return b.GetMatch() == a;
+		if (!a.IsMatchable() || !b.IsMatchable()) return false;
+		if (!CheckPotentialEquality(a.ContainingType, b.ContainingType)) return false;
+		if (!CheckNameObfMatch(a, b)) return false;
 		// if ((a.getId().StartsWith("<") || b.getId().StartsWith("<")) && !a.getName().Equals(b.getName())) return false; // require <clinit> and <init> to match
 
 		//MethodInstance hierarchyMatch = a.getHierarchyMatch();
 		//if (hierarchyMatch != null && !hierarchyMatch.getAllHierarchyMembers().contains(b)) return false;
-		if ((a.hasHierarchyMatch() || b.hasHierarchyMatch()) && !a.hasMatchedHierarchy(b)) return false;
+		if ((a.HasHierarchyMatch() || b.HasHierarchyMatch()) && !a.HasMatchedHierarchy(b)) return false;
 
 		// if (a.getType() == MethodType.LAMBDA_IMPL && b.getType() == MethodType.LAMBDA_IMPL) { // require same "out_er method" for lambdas
 		// 	bool found = false;
@@ -61,65 +61,65 @@ public class ClassifierUtil {
 		return true;
 	}
 
-	public static bool checkPotentialEquality(FieldInstance a, FieldInstance b) {
+	public static bool CheckPotentialEquality(FieldInstance a, FieldInstance b) {
 		if (a == b) return true;
-		if (a.getMatch() != null) return a.getMatch() == b;
-		if (b.getMatch() != null) return b.getMatch() == a;
-		if (!a.isMatchable() || !b.isMatchable()) return false;
-		if (!checkPotentialEquality(a.containingType, b.containingType)) return false;
-		if (!checkNameObfMatch(a, b)) return false;
+		if (a.GetMatch() != null) return a.GetMatch() == b;
+		if (b.GetMatch() != null) return b.GetMatch() == a;
+		if (!a.IsMatchable() || !b.IsMatchable()) return false;
+		if (!CheckPotentialEquality(a.ContainingType, b.ContainingType)) return false;
+		if (!CheckNameObfMatch(a, b)) return false;
 
 		return true;
 	}
 
-	public static bool checkPotentialEquality(MethodParamInstance a, MethodParamInstance b) {
+	public static bool CheckPotentialEquality(MethodParamInstance a, MethodParamInstance b) {
 		if (a == b) return true;
-		if (a.getMatch() != null) return a.getMatch() == b;
-		if (b.getMatch() != null) return b.getMatch() == a;
-		if (!a.isMatchable() || !b.isMatchable()) return false;
+		if (a.GetMatch() != null) return a.GetMatch() == b;
+		if (b.GetMatch() != null) return b.GetMatch() == a;
+		if (!a.IsMatchable() || !b.IsMatchable()) return false;
 		// if (a.isArg() != b.isArg()) return false;
-		if (!checkPotentialEquality(a.containingMethod, b.containingMethod)) return false;
-		if (!checkNameObfMatch(a, b)) return false;
+		if (!CheckPotentialEquality(a.ContainingMethod, b.ContainingMethod)) return false;
+		if (!CheckNameObfMatch(a, b)) return false;
 
 		return true;
 	}
 
-	public static bool checkPotentialEqualityNullable(TypeInstance a, TypeInstance b) {
+	public static bool CheckPotentialEqualityNullable(TypeInstance a, TypeInstance b) {
 		if (a == null && b == null) return true;
 		if (a == null || b == null) return false;
 
-		return checkPotentialEquality(a, b);
+		return CheckPotentialEquality(a, b);
 	}
 
-	public static bool checkPotentialEqualityNullable(MethodInstance a, MethodInstance b) {
+	public static bool CheckPotentialEqualityNullable(MethodInstance a, MethodInstance b) {
 		if (a == null && b == null) return true;
 		if (a == null || b == null) return false;
 
-		return checkPotentialEquality(a, b);
+		return CheckPotentialEquality(a, b);
 	}
 
-	public static bool checkPotentialEqualityNullable(FieldInstance a, FieldInstance b) {
+	public static bool CheckPotentialEqualityNullable(FieldInstance a, FieldInstance b) {
 		if (a == null && b == null) return true;
 		if (a == null || b == null) return false;
 
-		return checkPotentialEquality(a, b);
+		return CheckPotentialEquality(a, b);
 	}
 
-	public static bool checkPotentialEqualityNullable(MethodParamInstance a, MethodParamInstance b) {
+	public static bool CheckPotentialEqualityNullable(MethodParamInstance a, MethodParamInstance b) {
 		if (a == null && b == null) return true;
 		if (a == null || b == null) return false;
 
-		return checkPotentialEquality(a, b);
+		return CheckPotentialEquality(a, b);
 	}
 
-	public static double compareCounts(int countA, int countB) {
+	public static double CompareCounts(int countA, int countB) {
 		int delta = Math.Abs(countA - countB);
 		if (delta == 0) return 1;
 
 		return 1 - (double) delta / Math.Max(countA, countB);
 	}
 
-	public static double compareSets<T>(ISet<T> setA, ISet<T> setB, bool readOnly) {
+	public static double CompareSets<T>(ISet<T> setA, ISet<T> setB, bool readOnly) {
 		if (readOnly) setB = new HashSet<T>(setB);
 
 		int oldSize = setB.Count;
@@ -131,24 +131,24 @@ public class ClassifierUtil {
 		return total == 0 ? 1 : (double) matched / total;
 	}
 
-	public static double compareClassSets(List<TypeInstance> setA, List<TypeInstance> setB, bool readOnly) {
-		return compareIdentitySets(new HashSet<TypeInstance>(setA, new IdentityEqualityComparer<TypeInstance>()), new HashSet<TypeInstance>(setB, new IdentityEqualityComparer<TypeInstance>()),
-				readOnly, ClassifierUtil.checkPotentialEquality);
+	public static double CompareClassSets(List<TypeInstance> setA, List<TypeInstance> setB, bool readOnly) {
+		return CompareIdentitySets(new HashSet<TypeInstance>(setA, new IdentityEqualityComparer<TypeInstance>()), new HashSet<TypeInstance>(setB, new IdentityEqualityComparer<TypeInstance>()),
+				readOnly, CheckPotentialEquality);
 	}
 
-	public static double compareClassSets(ISet<TypeInstance> setA, ISet<TypeInstance> setB, bool readOnly) {
-		return compareIdentitySets(setA, setB, readOnly, ClassifierUtil.checkPotentialEquality);
+	public static double CompareClassSets(ISet<TypeInstance> setA, ISet<TypeInstance> setB, bool readOnly) {
+		return CompareIdentitySets(setA, setB, readOnly, CheckPotentialEquality);
 	}
 
-	public static double compareMethodSets(ISet<MethodInstance> setA, ISet<MethodInstance> setB, bool readOnly) {
-		return compareIdentitySets(setA, setB, readOnly, ClassifierUtil.checkPotentialEquality);
+	public static double CompareMethodSets(ISet<MethodInstance> setA, ISet<MethodInstance> setB, bool readOnly) {
+		return CompareIdentitySets(setA, setB, readOnly, CheckPotentialEquality);
 	}
 
-	public static double compareFieldSets(ISet<FieldInstance> setA, ISet<FieldInstance> setB, bool readOnly) {
-		return compareIdentitySets(setA, setB, readOnly, ClassifierUtil.checkPotentialEquality);
+	public static double CompareFieldSets(ISet<FieldInstance> setA, ISet<FieldInstance> setB, bool readOnly) {
+		return CompareIdentitySets(setA, setB, readOnly, CheckPotentialEquality);
 	}
 
-	private static double compareIdentitySets<T>(ISet<T> setA, ISet<T> setB, bool readOnly, Func<T, T, bool> comparator) where T : Matchable {
+	private static double CompareIdentitySets<T>(ISet<T> setA, ISet<T> setB, bool readOnly, Func<T, T, bool> comparator) where T : Matchable {
 		if (setA.Count == 0 || setB.Count == 0) {
 			return setA.Count == 0 && setB.Count == 0 ? 1 : 0;
 		}
@@ -170,13 +170,13 @@ public class ClassifierUtil {
 			foreach (var a in setA) {
 				if (setB.Remove(a)) {
 					toRemove.Add(a);
-				} else if (a.getMatch() != null) {
-					if (!setB.Remove((T?) a.getMatch())) {
+				} else if (a.GetMatch() != null) {
+					if (!setB.Remove((T) a.GetMatch()!)) {
 						unmatched++;
 					}
 
 					toRemove.Add(a);
-				} else if (assumeBothOrNoneObfuscated && !a.isNameObfuscated) {
+				} else if (assumeBothOrNoneObfuscated && !a.IsNameObfuscated) {
 					unmatched++;
 					toRemove.Add(a);
 				}
@@ -188,7 +188,7 @@ public class ClassifierUtil {
 		if (assumeBothOrNoneObfuscated) {
 			var toRemove = new HashSet<T>(new IdentityEqualityComparer<T>());
 			foreach (var b in setB) {
-				if (!b.isNameObfuscated) {
+				if (!b.IsNameObfuscated) {
 					unmatched++;
 					toRemove.Add(b);
 				}
@@ -237,23 +237,23 @@ public class ClassifierUtil {
 		return (double) (total - unmatched) / total;
 	}
 
-	public static double compareClassLists(List<TypeInstance> listA, List<TypeInstance> listB) {
-		return compareLists(listA, listB, (list, ind) => list[ind], list => list.Count, (a, b) => ClassifierUtil.checkPotentialEquality(a, b) ? COMPARED_SIMILAR : COMPARED_DISTINCT);
+	public static double CompareClassLists(List<TypeInstance> listA, List<TypeInstance> listB) {
+		return CompareLists(listA, listB, (list, ind) => list[ind], list => list.Count, (a, b) => CheckPotentialEquality(a, b) ? COMPARED_SIMILAR : COMPARED_DISTINCT);
 	}
 
-	public static double compareInsns(MethodInstance a, MethodInstance b) {
-		var ilA = a.cecilMethod?.Body?.Instructions;
-		var ilB = b.cecilMethod?.Body?.Instructions;
+	public static double CompareInsns(MethodInstance a, MethodInstance b) {
+		var ilA = a.CecilMethod?.Body?.Instructions;
+		var ilB = b.CecilMethod?.Body?.Instructions;
 		if (ilA == null || ilB == null) return 1;
 
-		return compareLists(ilA, ilB, (list, ind) => list[ind], list => list.Count, (inA, inB) => compareInsns(inA, inB, ilA, ilB, (list, item) => list.IndexOf(item), a, b, a.env.sharedEnv));
+		return CompareLists(ilA, ilB, (list, ind) => list[ind], list => list.Count, (inA, inB) => CompareInsns(inA, inB, ilA, ilB, (list, item) => list.IndexOf(item), a, b, a.Env.SharedEnv));
 	}
 
-	public static double compareInsns(List<Instruction> listA, List<Instruction> listB, MatchingEnv env) {
-		return compareLists(listA, listB, (list, ind) => list[ind], list => list.Count, (inA, inB) => compareInsns(inA, inB, listA, listB, (list, item) => list.IndexOf(item), null, null, env));
+	public static double CompareInsns(List<Instruction> listA, List<Instruction> listB, MatchingEnv env) {
+		return CompareLists(listA, listB, (list, ind) => list[ind], list => list.Count, (inA, inB) => CompareInsns(inA, inB, listA, listB, (list, item) => list.IndexOf(item), null, null, env));
 	}
 
-	private static int compareInsns<T>(Instruction insnA, Instruction insnB, T listA, T listB, Func<T, Instruction, int> posProvider,
+	private static int CompareInsns<T>(Instruction insnA, Instruction insnB, T listA, T listB, Func<T, Instruction, int> posProvider,
 			MethodInstance mthA, MethodInstance mthB, MatchingEnv env) {
 		if (insnA.OpCode != insnB.OpCode) return COMPARED_DISTINCT;
 
@@ -462,7 +462,7 @@ public class ClassifierUtil {
 	// 	return checkPotentialEquality(methodA, methodB);
 	// }
 
-	private static double compareLists<T, U>(T listA, T listB, RetrieveListElement<T, U> elementRetriever, RetrieveListSize<T> sizeRetriever, CompareElements<U> elementComparator) {
+	private static double CompareLists<T, U>(T listA, T listB, RetrieveListElement<T, U> elementRetriever, RetrieveListSize<T> sizeRetriever, CompareElements<U> elementComparator) {
 		int sizeA = sizeRetriever.Invoke(listA);
 		int sizeB = sizeRetriever.Invoke(listB);
 
@@ -510,23 +510,23 @@ public class ClassifierUtil {
 		return 1 - (double) distance / upperBound;
 	}
 
-	public static int[]? mapInsns(MethodInstance a, MethodInstance b) {
-		var ilA = a.cecilMethod?.Body?.Instructions;
-		var ilB = b.cecilMethod?.Body?.Instructions;
+	public static int[]? MapInsns(MethodInstance a, MethodInstance b) {
+		var ilA = a.CecilMethod?.Body?.Instructions;
+		var ilB = b.CecilMethod?.Body?.Instructions;
 		if (ilA == null || ilB == null) return null;
 
 		// if (ilA.Count * ilB.Count < 1000) {
-			return mapInsns(ilA, ilB, a, b, a.env.sharedEnv);
+			return MapInsns(ilA, ilB, a, b, a.Env.SharedEnv);
 		// } else {
 		// 	return a.env.sharedEnv.getCache().compute(ilMapCacheToken, a, b, (mA, mB) => mapInsns(mA.getAsmNode().instructions, mB.getAsmNode().instructions, mA, mB, mA.env.sharedEnv));
 		// }
 	}
 
-	public static int[] mapInsns(Collection<Instruction> listA, Collection<Instruction> listB, MethodInstance mthA, MethodInstance mthB, MatchingEnv env) {
-		return mapLists(listA, listB, (list, ind) => list[ind], list => list.Count, (inA, inB) => compareInsns(inA, inB, listA, listB, (list, item) => list.IndexOf(item), mthA, mthB, env));
+	public static int[] MapInsns(Collection<Instruction> listA, Collection<Instruction> listB, MethodInstance mthA, MethodInstance mthB, MatchingEnv env) {
+		return MapLists(listA, listB, (list, ind) => list[ind], list => list.Count, (inA, inB) => CompareInsns(inA, inB, listA, listB, (list, item) => list.IndexOf(item), mthA, mthB, env));
 	}
 
-	private static int[] mapLists<T, U>(T listA, T listB, RetrieveListElement<T, U> elementRetriever, RetrieveListSize<T> sizeRetriever, CompareElements<U> elementComparator) {
+	private static int[] MapLists<T, U>(T listA, T listB, RetrieveListElement<T, U> elementRetriever, RetrieveListSize<T> sizeRetriever, CompareElements<U> elementComparator) {
 		int sizeA = sizeRetriever.Invoke(listA);
 		int sizeB = sizeRetriever.Invoke(listB);
 
@@ -643,7 +643,7 @@ public class ClassifierUtil {
 	public const int COMPARED_POSSIBLE = 1;
 	public const int COMPARED_DISTINCT = 2;
 
-	private static string? toString(Object node) {
+	private static string? ToString(Object node) {
 		// if (node is Instruction) {
 		// 	Textifier textifier = new Textifier();
 		// 	MethodVisitor visitor = new TraceMethodVisitor(textifier);
@@ -660,22 +660,22 @@ public class ClassifierUtil {
 
 	private delegate int RetrieveListSize<T>(T list);
 
-	public static List<RankResult<T>> rank<T>(T src, T[] dsts, List<IClassifier<T>> classifiers, Func<T, T, bool> potentialEqualityCheck, MatchingEnv env, double maxMismatch) where T : Matchable {
+	public static List<RankResult<T>> Rank<T>(T src, T[] dsts, List<IClassifier<T>> classifiers, Func<T, T, bool> potentialEqualityCheck, MatchingEnv env, double maxMismatch) where T : Matchable {
 		List<RankResult<T>> ret = new(dsts.Length);
 
 		foreach (T dst in dsts) {
-			RankResult<T>? result = rank(src, dst, classifiers, potentialEqualityCheck, env, maxMismatch);
+			RankResult<T>? result = Rank(src, dst, classifiers, potentialEqualityCheck, env, maxMismatch);
 			if (result != null) ret.Add(result);
 		}
 
 		// negative for reverse sort order
 		// TODO verify this sorting is correct
-		ret.Sort((a, b) => -a.score.CompareTo(b.score));
+		ret.Sort((a, b) => -a.Score.CompareTo(b.Score));
 
 		return ret;
 	}
 
-	public static List<RankResult<T>> rankParallel<T>(T src, T[] dsts, List<IClassifier<T>> classifiers, Func<T, T, bool> potentialEqualityCheck, MatchingEnv env, double maxMismatch) where T : Matchable {
+	public static List<RankResult<T>> RankParallel<T>(T src, T[] dsts, List<IClassifier<T>> classifiers, Func<T, T, bool> potentialEqualityCheck, MatchingEnv env, double maxMismatch) where T : Matchable {
 		// return Arrays.stream(dsts)
 		// 		.parallel()
 		// 		.map(dst => rank(src, dst, classifiers, potentialEqualityCheck, env, maxMismatch))
@@ -683,10 +683,10 @@ public class ClassifierUtil {
 		// 		.sorted(Comparator.<RankResult<T>, double>comparing(RankResult::getScore).reversed())
 		// 		.collect(Collectors.toList());
 		// TODO parallelization if we need it
-		return rank(src, dsts, classifiers, potentialEqualityCheck, env, maxMismatch);
+		return Rank(src, dsts, classifiers, potentialEqualityCheck, env, maxMismatch);
 	}
 
-	private static RankResult<T>? rank<T>(T src, T dst, List<IClassifier<T>> classifiers, Func<T, T, bool> potentialEqualityCheck, MatchingEnv env, double maxMismatch) where T : Matchable {
+	private static RankResult<T>? Rank<T>(T src, T dst, List<IClassifier<T>> classifiers, Func<T, T, bool> potentialEqualityCheck, MatchingEnv env, double maxMismatch) where T : Matchable {
 		// assert src.getEnv() != dst.getEnv();
 
 		if (!potentialEqualityCheck.Invoke(src, dst)) return null;
@@ -696,10 +696,10 @@ public class ClassifierUtil {
 		List<ClassifierResult<T>> results = new(classifiers.Count);
 
 		foreach (IClassifier<T> classifier in classifiers) {
-			double cScore = classifier.getScore(src, dst, env);
+			double cScore = classifier.GetScore(src, dst, env);
 			// assert cScore > -epsilon && cScore < 1 + epsilon : "invalid score from "+classifier.getName()+": "+cScore;
 
-			double weight = classifier.getWeight();
+			double weight = classifier.GetWeight();
 			double weightedScore = cScore * weight;
 
 			mismatch += weight - weightedScore;
@@ -712,32 +712,32 @@ public class ClassifierUtil {
 		return new(dst, score, results);
 	}
 
-	public static bool checkRank<T>(List<RankResult<T>> ranking, double absThreshold, double relThreshold, double maxScore) {
+	public static bool CheckRank<T>(List<RankResult<T>> ranking, double absThreshold, double relThreshold, double maxScore) {
 		if (ranking.Count == 0) return false;
 
-		double score = getScore(ranking[0].score, maxScore);
+		double score = GetScore(ranking[0].Score, maxScore);
 		if (score < absThreshold) return false;
 
 		if (ranking.Count == 1) {
 			return true;
 		} else {
-			double nextScore = getScore(ranking[1].score, maxScore);
+			double nextScore = GetScore(ranking[1].Score, maxScore);
 
 			return nextScore < score * (1 - relThreshold);
 		}
 	}
 
-	public static double getScore(double rawScore, double maxScore) {
+	public static double GetScore(double rawScore, double maxScore) {
 		double ret = rawScore / maxScore;
 
 		return ret * ret;
 	}
 
-	public static double getRawScore(double score, double maxScore) {
+	public static double GetRawScore(double score, double maxScore) {
 		return Math.Sqrt(score) * maxScore;
 	}
 
-	public static void extractStrings(Collection<Instruction> il, ISet<string> out_) {
+	public static void ExtractStrings(Collection<Instruction> il, ISet<string> out_) {
 		foreach (var aInsn in il) {
 			if (aInsn.OpCode == OpCodes.Ldstr) {
 				out_.Add((string) aInsn.Operand);
@@ -745,7 +745,7 @@ public class ClassifierUtil {
 		}
 	}
 
-	public static void extractNumbers(MethodDefinition method, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
+	public static void ExtractNumbers(MethodDefinition method, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
 		if(method.Body != null && method.Body.Instructions != null) {
 			foreach (var instr in method.Body.Instructions) {
 				if (instr.OpCode == OpCodes.Ldc_I4_M1) {
@@ -783,7 +783,7 @@ public class ClassifierUtil {
 		}
 	}
 
-	public static void handleNumberValue(object number, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
+	public static void HandleNumberValue(object number, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
 		if (number == null) return;
 
 		if (number is int i) {
@@ -797,14 +797,14 @@ public class ClassifierUtil {
 		}
 	}
 
-	public static double classifyPosition<T>(T a, T b,
+	public static double ClassifyPosition<T>(T a, T b,
 			Func<T, int> positionSupplier,
 			Func<T, int, T> siblingSupplier,
 			Func<T, List<T>> siblingsSupplier) where T : Matchable {
 		int posA = positionSupplier.Invoke(a);
 		int posB = positionSupplier.Invoke(b);
-		T[] siblingsA = siblingsSupplier.Invoke(a).ToArray();
-		T[] siblingsB = siblingsSupplier.Invoke(b).ToArray();
+		T[] siblingsA = [.. siblingsSupplier.Invoke(a)];
+		T[] siblingsB = [.. siblingsSupplier.Invoke(b)];
 
 		if (posA == posB && siblingsA.Length == siblingsB.Length) return 1;
 		if (posA == -1 || posB == -1) return posA == posB ? 1 : 0;
@@ -818,7 +818,7 @@ public class ClassifierUtil {
 		if (posA > 0) {
 			for (int i = posA - 1; i >= 0; i--) {
 				T c = siblingSupplier.Invoke(a, i);
-				T? match = (T?) c.getMatch();
+				T? match = (T?) c.GetMatch();
 
 				if (match != null) {
 					startPosA = i + 1;
@@ -831,7 +831,7 @@ public class ClassifierUtil {
 		if (posA < endPosA - 1) {
 			for (int i = posA + 1; i < endPosA; i++) {
 				T c = siblingSupplier.Invoke(a, i);
-				T? match = (T?) c.getMatch();
+				T? match = (T?) c.GetMatch();
 
 				if (match != null) {
 					endPosA = i;
@@ -847,15 +847,15 @@ public class ClassifierUtil {
 			endPosB = siblingsB.Length;
 		}
 
-		double relPosA = getRelativePosition(posA - startPosA, endPosA - startPosA);
+		double relPosA = GetRelativePosition(posA - startPosA, endPosA - startPosA);
 		// assert relPosA >= 0 && relPosA <= 1;
-		double relPosB = getRelativePosition(posB - startPosB, endPosB - startPosB);
+		double relPosB = GetRelativePosition(posB - startPosB, endPosB - startPosB);
 		// assert relPosB >= 0 && relPosB <= 1;
 
 		return 1 - Math.Abs(relPosA - relPosB);
 	}
 
-	public static double getRelativePosition(int position, int size) {
+	public static double GetRelativePosition(int position, int size) {
 		if (size == 1) return 0.5;
 		// assert size > 1;
 

@@ -4,8 +4,8 @@ using Mono.Cecil;
 namespace Matcher.Matching;
 
 public class MethodInstance : MatchableMember {
-	public MethodDefinition cecilMethod { get {
-		return (MethodDefinition) cecilMemberReference;
+	public MethodDefinition? CecilMethod { get {
+		return (MethodDefinition?) CecilMemberReference;
 	} }
 	private MethodInstance? matchedMethod;
 	public MethodHierarchyData? hierarchyData;
@@ -31,59 +31,59 @@ public class MethodInstance : MatchableMember {
 			args[i] = new MethodParamInstance(env, this, param, !Matcher.NonObfuscatedPattern.IsMatch(param.Name));
 		}
 		this.args = args;
-		returnType = env.getCreateTypeInstance(cecilMethod.ReturnType.Name);
+		returnType = env.GetCreateTypeInstance(cecilMethod.ReturnType.Name);
 	}
 
-	public override string getId() {
-		return cecilMethod.Name; // TODO include desc
+	public override string GetId() {
+		return CecilMethod.Name; // TODO include desc
 	}
 
-	public override bool hasPotentialMatch() {
+	public override bool HasPotentialMatch() {
 		throw new NotImplementedException();
 	}
 
-	public override bool isMatchable() {
-		return hierarchyData != null && hierarchyData.matchable && containingType.isMatchable();
+	public override bool IsMatchable() {
+		return hierarchyData != null && hierarchyData.matchable && ContainingType.IsMatchable();
 	}
 
-	public override bool setMatchable(bool matchable) {
+	public override bool SetMatchable(bool matchable) {
 		if (!matchable && matchedMethod != null) return false;
-		if (matchable && !containingType.isMatchable()) return false;
+		if (matchable && !ContainingType.IsMatchable()) return false;
 		if (hierarchyData == null) return !matchable;
-		if (!matchable && hierarchyData.matchedHierarchy != null) return false;
+		if (!matchable && hierarchyData.MatchedHierarchy != null) return false;
 
 		hierarchyData.matchable = matchable;
 
 		return true;
 	}
 
-	public override MethodInstance? getMatch() {
+	public override MethodInstance? GetMatch() {
 		return matchedMethod;
 	}
 
-	public void setMatch(MethodInstance? method) {
+	public void SetMatch(MethodInstance? method) {
 		matchedMethod = method;
 		// TODO it probably shouldn't be null?
-		if (hierarchyData != null) hierarchyData!.matchedHierarchy = matchedMethod?.hierarchyData;
+		if (hierarchyData != null) hierarchyData!.MatchedHierarchy = matchedMethod?.hierarchyData;
 	}
 
-	public override Matchable getOwner() {
+	public override Matchable GetOwner() {
 		throw new NotImplementedException();
 	}
 
-	public override bool isFullyMatched(bool recursive) {
+	public override bool IsFullyMatched(bool recursive) {
 		throw new NotImplementedException();
 	}
 
-	public static string getId(string name, string desc) {
+	public static string GetId(string name, string desc) {
 		return name+desc;
 	}
 
-	public bool hasMatchedHierarchy(MethodInstance other) {
-		return hierarchyData != null && hierarchyData.matchedHierarchy == other.hierarchyData;
+	public bool HasMatchedHierarchy(MethodInstance other) {
+		return hierarchyData != null && hierarchyData.MatchedHierarchy == other.hierarchyData;
 	}
 
-	public bool hasHierarchyMatch() {
-		return hierarchyData?.matchedHierarchy != null;
+	public bool HasHierarchyMatch() {
+		return hierarchyData?.MatchedHierarchy != null;
 	}
 }

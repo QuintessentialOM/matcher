@@ -4,27 +4,27 @@ using Matcher.Matching;
 namespace Matcher.Matching.Classifier;
 
 public class MethodClassifier {
-	public static void init() {
-		addClassifier(methodTypeCheck, 10);
-		addClassifier(accessFlags, 4);
-		addClassifier(argTypes, 10);
-		addClassifier(retType, 5);
+	public static void Init() {
+		AddClassifier(methodTypeCheck, 10);
+		AddClassifier(accessFlags, 4);
+		AddClassifier(argTypes, 10);
+		AddClassifier(retType, 5);
 		// addClassifier(signature, 5);
-		addClassifier(classRefs, 3);
-		addClassifier(stringConstants, 5);
-		addClassifier(numericConstants, 5);
-		addClassifier(parentMethods, 10);
-		addClassifier(childMethods, 3);
-		addClassifier(inReferences, 6);
-		addClassifier(outReferences, 6);
-		addClassifier(fieldReads, 5);
-		addClassifier(fieldWrites, 5);
-		addClassifier(position, 3);
-		addClassifier(code, 12, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(classRefs, 3);
+		AddClassifier(stringConstants, 5);
+		AddClassifier(numericConstants, 5);
+		AddClassifier(parentMethods, 10);
+		AddClassifier(childMethods, 3);
+		AddClassifier(inReferences, 6);
+		AddClassifier(outReferences, 6);
+		AddClassifier(fieldReads, 5);
+		AddClassifier(fieldWrites, 5);
+		AddClassifier(position, 3);
+		AddClassifier(code, 12, ClassifierLevel.Full, ClassifierLevel.Extra);
 		// addClassifier(inRefsBci, 6, ClassifierLevel.Extra);
 	}
 
-	public static void addClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
+	public static void AddClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
 		if (levels.Length == 0) levels = Enum.GetValues<ClassifierLevel>();
 
 		classifier.weight = weight;
@@ -32,29 +32,29 @@ public class MethodClassifier {
 		foreach (ClassifierLevel level in levels) {
 			if (!classifiers.ContainsKey(level)) classifiers[level] = new();
 			classifiers[level].Add(classifier);
-			maxScore[level] = getMaxScore(level) + weight;
+			maxScore[level] = GetMaxScore(level) + weight;
 		}
 	}
 
-	public static double getMaxScore(ClassifierLevel level) {
+	public static double GetMaxScore(ClassifierLevel level) {
 		return maxScore.GetValueOrDefault(level, 0);
 	}
 
-	public static List<RankResult<MethodInstance>> rank(MethodInstance src, MethodInstance[] dsts, ClassifierLevel level, MatchingEnv env) {
-		return rank(src, dsts, level, env, double.PositiveInfinity);
+	public static List<RankResult<MethodInstance>> Rank(MethodInstance src, MethodInstance[] dsts, ClassifierLevel level, MatchingEnv env) {
+		return Rank(src, dsts, level, env, double.PositiveInfinity);
 	}
 
-	public static List<RankResult<MethodInstance>> rank(MethodInstance src, MethodInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch) {
-		if (src.hasMatch()) { // already matched,  limit dsts to the match
-			if (dsts.Contains(src.getMatch())) {
-				return new();
+	public static List<RankResult<MethodInstance>> Rank(MethodInstance src, MethodInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch) {
+		if (src.HasMatch()) { // already matched,  limit dsts to the match
+			if (dsts.Contains(src.GetMatch())) {
+				return [];
 			} else if (dsts.Length != 1) {
-				dsts = [ src.getMatch()! ];
+				dsts = [ src.GetMatch()! ];
 			}
 		} else { // limit dsts to the same method tree if there's a matched src
 			// MethodInstance matched = src.getHierarchyMatch();
 			// possibly not the same semantics as getHierarchyMatch, unsure, matcher source is kind of confusing
-			var matched = src.hierarchyData?.matchedHierarchy;
+			var matched = src.hierarchyData?.MatchedHierarchy;
 
 			if (matched != null) {
 				ISet<MethodInstance> dstHierarchyMembers = matched.members;
@@ -76,27 +76,27 @@ public class MethodClassifier {
 			}
 		}
 
-		return ClassifierUtil.rank(src, dsts, classifiers.GetValueOrDefault(level, []), ClassifierUtil.checkPotentialEquality, env, maxMismatch);
+		return ClassifierUtil.Rank(src, dsts, classifiers.GetValueOrDefault(level, []), ClassifierUtil.CheckPotentialEquality, env, maxMismatch);
 	}
 
-	private static readonly Dictionary<ClassifierLevel, List<IClassifier<MethodInstance>>> classifiers = new();
-	private static readonly Dictionary<ClassifierLevel, double> maxScore = new();
+	private static readonly Dictionary<ClassifierLevel, List<IClassifier<MethodInstance>>> classifiers = [];
+	private static readonly Dictionary<ClassifierLevel, double> maxScore = [];
 
-	private static AbstractClassifier methodTypeCheck = new AbstractClassifier("method type check", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
+	private static readonly AbstractClassifier methodTypeCheck = new("method type check", (methodA, methodB, env) => {
+			if (!CheckAsmNodes(methodA, methodB)) return CompareAsmNodes(methodA, methodB);
 
 			int diff = 0;
 
-			diff += methodA.cecilMethod.IsStatic != methodB.cecilMethod.IsStatic ? 1 : 0;
-			diff += methodA.cecilMethod.IsNative != methodB.cecilMethod.IsNative ? 1 : 0;
-			diff += methodA.cecilMethod.IsAbstract != methodB.cecilMethod.IsAbstract ? 1 : 0;
+			diff += methodA.CecilMethod.IsStatic != methodB.CecilMethod.IsStatic ? 1 : 0;
+			diff += methodA.CecilMethod.IsNative != methodB.CecilMethod.IsNative ? 1 : 0;
+			diff += methodA.CecilMethod.IsAbstract != methodB.CecilMethod.IsAbstract ? 1 : 0;
 
 			return 1 - diff / 3.0;
 		}
 	);
 
-	private static AbstractClassifier accessFlags = new AbstractClassifier("access flags", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
+	private static readonly AbstractClassifier accessFlags = new("access flags", (methodA, methodB, env) => {
+			if (!CheckAsmNodes(methodA, methodB)) return CompareAsmNodes(methodA, methodB);
 
 			// int mask = (Opcodes.ACC_PUBLIC | Opcodes.ACC_PROTECTED | Opcodes.ACC_PRIVATE) | Opcodes.ACC_FINAL | Opcodes.ACC_SYNCHRONIZED | Opcodes.ACC_BRIDGE | Opcodes.ACC_VARARGS | Opcodes.ACC_STRICT | Opcodes.ACC_SYNTHETIC;
 			// int resultA = methodA.getAsmNode().access & mask;
@@ -106,12 +106,12 @@ public class MethodClassifier {
 
 			int diff = 0;
 
-			bool hasSameAccess = (methodA.cecilMethod.IsPublic == methodB.cecilMethod.IsPublic)
-				&& (methodA.cecilMethod.IsFamilyOrAssembly == methodB.cecilMethod.IsFamilyOrAssembly)
-				&& (methodA.cecilMethod.IsFamily == methodB.cecilMethod.IsFamily)
-				&& (methodA.cecilMethod.IsFamilyAndAssembly == methodB.cecilMethod.IsFamilyAndAssembly)
-				&& (methodA.cecilMethod.IsAssembly == methodB.cecilMethod.IsAssembly)
-				&& (methodA.cecilMethod.IsPrivate == methodB.cecilMethod.IsPrivate);
+			bool hasSameAccess = (methodA.CecilMethod.IsPublic == methodB.CecilMethod.IsPublic)
+				&& (methodA.CecilMethod.IsFamilyOrAssembly == methodB.CecilMethod.IsFamilyOrAssembly)
+				&& (methodA.CecilMethod.IsFamily == methodB.CecilMethod.IsFamily)
+				&& (methodA.CecilMethod.IsFamilyAndAssembly == methodB.CecilMethod.IsFamilyAndAssembly)
+				&& (methodA.CecilMethod.IsAssembly == methodB.CecilMethod.IsAssembly)
+				&& (methodA.CecilMethod.IsPrivate == methodB.CecilMethod.IsPrivate);
 
 			if (!hasSameAccess) diff += 1;
 
@@ -121,8 +121,8 @@ public class MethodClassifier {
 		}
 	);
 
-	private static AbstractClassifier argTypes = new AbstractClassifier("arg types", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			return ClassifierUtil.compareClassLists(getArgTypes(methodA), getArgTypes(methodB));
+	private static readonly AbstractClassifier argTypes = new("arg types", (methodA, methodB, env) => {
+			return ClassifierUtil.CompareClassLists(getArgTypes(methodA), getArgTypes(methodB));
 		}
 	);
 
@@ -130,12 +130,12 @@ public class MethodClassifier {
 		return [.. method.args.Select(param => param.paramType)];
 	}
 
-	private static AbstractClassifier retType = new AbstractClassifier("ret type", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			return ClassifierUtil.checkPotentialEquality(methodA.returnType, methodB.returnType) ? 1 : 0;
+	private static readonly AbstractClassifier retType = new("ret type", (methodA, methodB, env) => {
+			return ClassifierUtil.CheckPotentialEquality(methodA.returnType, methodB.returnType) ? 1 : 0;
 		}
 	);
 
-	// private static AbstractClassifier signature = new AbstractClassifier("signature", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier signature = new("signature", (methodA, methodB, env) => {
 	// 		MethodSignature sigA = methodA.getSignature();
 	// 		MethodSignature sigB = methodB.getSignature();
 
@@ -146,20 +146,20 @@ public class MethodClassifier {
 	// 	}
 	// );
 
-	private static AbstractClassifier classRefs = new AbstractClassifier("class refs", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			return ClassifierUtil.compareClassSets(methodA.typeRefs, methodB.typeRefs, true);
+	private static readonly AbstractClassifier classRefs = new("class refs", (methodA, methodB, env) => {
+			return ClassifierUtil.CompareClassSets(methodA.typeRefs, methodB.typeRefs, true);
 		}
 	);
 
-	private static AbstractClassifier stringConstants = new AbstractClassifier("string constants", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
+	private static readonly AbstractClassifier stringConstants = new("string constants", (methodA, methodB, env) => {
+			if (!CheckAsmNodes(methodA, methodB)) return CompareAsmNodes(methodA, methodB);
 
-			return ClassifierUtil.compareSets(methodA.strings, methodB.strings, false);
+			return ClassifierUtil.CompareSets(methodA.strings, methodB.strings, false);
 		}
 	);
 
-	private static AbstractClassifier numericConstants = new AbstractClassifier("numeric constants", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
+	private static readonly AbstractClassifier numericConstants = new("numeric constants", (methodA, methodB, env) => {
+			if (!CheckAsmNodes(methodA, methodB)) return CompareAsmNodes(methodA, methodB);
 
 			HashSet<int> intsA = new();
 			HashSet<int> intsB = new();
@@ -170,59 +170,59 @@ public class MethodClassifier {
 			HashSet<double> doublesA = new();
 			HashSet<double> doublesB = new();
 
-			ClassifierUtil.extractNumbers(methodA.cecilMethod, intsA, longsA, floatsA, doublesA);
-			ClassifierUtil.extractNumbers(methodB.cecilMethod, intsB, longsB, floatsB, doublesB);
+			ClassifierUtil.ExtractNumbers(methodA.CecilMethod, intsA, longsA, floatsA, doublesA);
+			ClassifierUtil.ExtractNumbers(methodB.CecilMethod, intsB, longsB, floatsB, doublesB);
 
-			return (ClassifierUtil.compareSets(intsA, intsB, false)
-					+ ClassifierUtil.compareSets(longsA, longsB, false)
-					+ ClassifierUtil.compareSets(floatsA, floatsB, false)
-					+ ClassifierUtil.compareSets(doublesA, doublesB, false)) / 4.0;
+			return (ClassifierUtil.CompareSets(intsA, intsB, false)
+					+ ClassifierUtil.CompareSets(longsA, longsB, false)
+					+ ClassifierUtil.CompareSets(floatsA, floatsB, false)
+					+ ClassifierUtil.CompareSets(doublesA, doublesB, false)) / 4.0;
 		}
 	);
 
-	private static AbstractClassifier parentMethods = new AbstractClassifier("parent methods", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			return ClassifierUtil.compareMethodSets(methodA.parents, methodB.parents, true);
+	private static readonly AbstractClassifier parentMethods = new("parent methods", (methodA, methodB, env) => {
+			return ClassifierUtil.CompareMethodSets(methodA.parents, methodB.parents, true);
 		}
 	);
 
-	private static AbstractClassifier childMethods = new AbstractClassifier("child methods", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			return ClassifierUtil.compareMethodSets(methodA.children, methodB.children, true);
+	private static readonly AbstractClassifier childMethods = new("child methods", (methodA, methodB, env) => {
+			return ClassifierUtil.CompareMethodSets(methodA.children, methodB.children, true);
 		}
 	);
 
-	private static AbstractClassifier outReferences = new AbstractClassifier("out references", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			return ClassifierUtil.compareMethodSets(methodA.refsOut, methodB.refsOut, true);
+	private static readonly AbstractClassifier outReferences = new("out references", (methodA, methodB, env) => {
+			return ClassifierUtil.CompareMethodSets(methodA.refsOut, methodB.refsOut, true);
 		}
 	);
 
-	private static AbstractClassifier inReferences = new AbstractClassifier("in references", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			return ClassifierUtil.compareMethodSets(methodA.refsIn, methodB.refsIn, true);
+	private static readonly AbstractClassifier inReferences = new("in references", (methodA, methodB, env) => {
+			return ClassifierUtil.CompareMethodSets(methodA.refsIn, methodB.refsIn, true);
 		}
 	);
 
-	private static AbstractClassifier fieldReads = new AbstractClassifier("field reads", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			return ClassifierUtil.compareFieldSets(methodA.fieldReadRefs, methodB.fieldReadRefs, true);
+	private static readonly AbstractClassifier fieldReads = new("field reads", (methodA, methodB, env) => {
+			return ClassifierUtil.CompareFieldSets(methodA.fieldReadRefs, methodB.fieldReadRefs, true);
 		}
 	);
 
-	private static AbstractClassifier fieldWrites = new AbstractClassifier("field writes", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			return ClassifierUtil.compareFieldSets(methodA.fieldWriteRefs, methodB.fieldWriteRefs, true);
+	private static readonly AbstractClassifier fieldWrites = new("field writes", (methodA, methodB, env) => {
+			return ClassifierUtil.CompareFieldSets(methodA.fieldWriteRefs, methodB.fieldWriteRefs, true);
 		}
 	);
 
-	private static AbstractClassifier position = new AbstractClassifier("position", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			return ClassifierUtil.classifyPosition(methodA, methodB, method => method.position, (m, idx) => m.containingType.methodsOrdered[idx], f => f.containingType.methodsOrdered);
+	private static readonly AbstractClassifier position = new("position", (methodA, methodB, env) => {
+			return ClassifierUtil.ClassifyPosition(methodA, methodB, method => method.Position, (m, idx) => m.ContainingType.methodsOrdered[idx], f => f.ContainingType.methodsOrdered);
 		}
 	);
 
-	private static AbstractClassifier code = new AbstractClassifier("code", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
-			if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
+	private static readonly AbstractClassifier code = new("code", (methodA, methodB, env) => {
+			if (!CheckAsmNodes(methodA, methodB)) return CompareAsmNodes(methodA, methodB);
 
-			return ClassifierUtil.compareInsns(methodA, methodB);
+			return ClassifierUtil.CompareInsns(methodA, methodB);
 		}
 	);
 
-	// private static AbstractClassifier inRefsBci = new AbstractClassifier("in refs (bci)", (MethodInstance methodA, MethodInstance methodB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier inRefsBci = new("in refs (bci)", (methodA, methodB, env) => {
 	// 		String ownerA = methodA.getCls().getName();
 	// 		String nameA = methodA.getName();
 	// 		String descA = methodA.getDesc();
@@ -307,33 +307,28 @@ public class MethodClassifier {
 	// 			&& (sOwner.equals(owner) || (target = method.getEnv().getClsByName(sOwner)) != null && target.resolveMethod(name, desc, sItf) == method);
 	// }
 
-	private static bool checkAsmNodes(MethodInstance a, MethodInstance b) {
-		return a.cecilMethod != null && b.cecilMethod != null;
+	private static bool CheckAsmNodes(MethodInstance a, MethodInstance b) {
+		return a.CecilMethod != null && b.CecilMethod != null;
 	}
 
-	private static double compareAsmNodes(MethodInstance a, MethodInstance b) {
-		return a.cecilMethod == null && b.cecilMethod == null ? 1 : 0;
+	private static double CompareAsmNodes(MethodInstance a, MethodInstance b) {
+		return a.CecilMethod == null && b.CecilMethod == null ? 1 : 0;
 	}
 
-	public class AbstractClassifier : IClassifier<MethodInstance> {
-		private readonly string name;
+	public class AbstractClassifier(string name, Func<MethodInstance, MethodInstance, MatchingEnv, double> classifierFunc) : IClassifier<MethodInstance> {
+		private readonly string name = name;
 		public double weight; // probably shouldn't be public but I'm lazy and csharp nested types have different visibility rules so I can't just do private
-		private Func<MethodInstance, MethodInstance, MatchingEnv, double> classifierFunc;
+		private readonly Func<MethodInstance, MethodInstance, MatchingEnv, double> classifierFunc = classifierFunc;
 
-		public AbstractClassifier(string name, Func<MethodInstance, MethodInstance, MatchingEnv, double> classifierFunc) {
-			this.name = name;
-			this.classifierFunc = classifierFunc;
-		}
-
-		public String getName() {
+		public string GetName() {
 			return name;
 		}
 
-		public double getWeight() {
+		public double GetWeight() {
 			return weight;
 		}
 
-		public double getScore(MethodInstance a, MethodInstance b, MatchingEnv env) {
+		public double GetScore(MethodInstance a, MethodInstance b, MatchingEnv env) {
 			return classifierFunc.Invoke(a, b, env);
 		}
 	}

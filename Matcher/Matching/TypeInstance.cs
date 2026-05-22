@@ -6,8 +6,8 @@ using Mono.Cecil;
 namespace Matcher.Matching;
 
 public class TypeInstance : MatchableMemberOrClass {
-	public TypeDefinition? cecilType { get {
-		return (TypeDefinition?) cecilMemberReference;
+	public TypeDefinition? CecilType { get {
+		return (TypeDefinition?) CecilMemberReference;
 	} }
 	public readonly Dictionary<string, MethodInstance> methodsById = [];
 	public readonly Dictionary<string, FieldInstance> fieldsById = [];
@@ -52,35 +52,35 @@ public class TypeInstance : MatchableMemberOrClass {
 		int arrayDimensions = ArrayPattern.Count(name);
 		if (arrayDimensions > 0) {
 			var elementName = name.TrimEnd(['[', ']']);
-			elementType = env.getCreateTypeInstance(elementName);
+			elementType = env.GetCreateTypeInstance(elementName);
 			elementType.arrays.Add(this);
 		}
 	}
 	
-	public override string getId() {
-		return getName();
+	public override string GetId() {
+		return GetName();
 	}
 
-	public bool isReal() {
-		return cecilType != null;
+	public bool IsReal() {
+		return CecilType != null;
 	}
 
-	public override bool hasPotentialMatch() {
+	public override bool HasPotentialMatch() {
 		if (matchedType != null) return true;
-		if (!isMatchable()) return false;
+		if (!IsMatchable()) return false;
 
-		foreach (var o in env.getOther().types.Values) {
-			if (o.isReal() && ClassifierUtil.checkPotentialEquality(this, o)) return true;
+		foreach (var o in Env.GetOther().types.Values) {
+			if (o.IsReal() && ClassifierUtil.CheckPotentialEquality(this, o)) return true;
 		}
 
 		return false;
 	}
 
-	public override bool isMatchable() {
+	public override bool IsMatchable() {
 		return matchable;
 	}
 
-	public override bool setMatchable(bool matchable) {
+	public override bool SetMatchable(bool matchable) {
 		if (!matchable && matchedType != null) return false;
 
 		this.matchable = matchable;
@@ -88,40 +88,40 @@ public class TypeInstance : MatchableMemberOrClass {
 		return true;
 	}
 
-	public override TypeInstance? getMatch() {
+	public override TypeInstance? GetMatch() {
 		return matchedType;
 	}
 
-	public void setMatch(TypeInstance? type) {
+	public void SetMatch(TypeInstance? type) {
 		matchedType = type;
 	}
 
-	public override bool isFullyMatched(bool recursive) {
+	public override bool IsFullyMatched(bool recursive) {
 		throw new NotImplementedException();
 	}
 
-	public override Matchable getOwner() {
+	public override Matchable GetOwner() {
 		throw new NotImplementedException();
 	}
 
-	public bool isArray() {
+	public bool IsArray() {
 		return elementType != null;
 	}
 
-	public int getArrayDimensions() {
+	public int GetArrayDimensions() {
 		if (elementType == null) return 0;
 
-		return ArrayPattern.Count(getName());
+		return ArrayPattern.Count(GetName());
 	}
 
-	public MethodInstance? getMethod(string name, string? desc) {
+	public MethodInstance? GetMethod(string name, string? desc) {
 		if (desc != null) {
-			return methodsById.GetValueOrDefault(MethodInstance.getId(name, desc));
+			return methodsById!.GetValueOrDefault(MethodInstance.GetId(name, desc), null);
 		} else {
 			MethodInstance? ret = null;
 
 			foreach (MethodInstance method in methodsById.Values) {
-				if (method.getName().Equals(name)) {
+				if (method.GetName().Equals(name)) {
 					if (ret != null) return null; // non-unique
 
 					ret = method;
@@ -132,14 +132,14 @@ public class TypeInstance : MatchableMemberOrClass {
 		}
 	}
 
-	public FieldInstance? getField(string name, string? desc) {
+	public FieldInstance? GetField(string name, string? desc) {
 		if (desc != null) {
-			return fieldsById.GetValueOrDefault(FieldInstance.getId(name, desc), null);
+			return fieldsById!.GetValueOrDefault(FieldInstance.GetId(name, desc), null);
 		} else {
 			FieldInstance? ret = null;
 
 			foreach (FieldInstance field in fieldsById.Values) {
-				if (field.getName().Equals(name)) {
+				if (field.GetName().Equals(name)) {
 					if (ret != null) return null; // non-unique
 
 					ret = field;

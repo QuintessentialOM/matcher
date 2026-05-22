@@ -4,8 +4,8 @@ using Mono.Cecil;
 namespace Matcher.Matching;
 
 public class FieldInstance : MatchableMember {
-	public FieldDefinition cecilField { get {
-		return (FieldDefinition) cecilMemberReference;
+	public FieldDefinition? CecilField { get {
+		return (FieldDefinition?) CecilMemberReference;
 	} }
 	private readonly string id;
 	private FieldInstance? matchedField;
@@ -17,48 +17,48 @@ public class FieldInstance : MatchableMember {
 
 	[SetsRequiredMembers]
 	public FieldInstance(LocalClassEnv env, TypeInstance containingType, FieldDefinition cecilField, int position, bool isNameObfuscated) : base(env, containingType, cecilField, position, isNameObfuscated) {
-		id = getId(cecilField.Name, cecilField.FieldType.Name);
-		fieldType = env.getCreateTypeInstance(cecilField.FieldType.Name);
+		id = GetId(cecilField.Name, cecilField.FieldType.Name);
+		fieldType = env.GetCreateTypeInstance(cecilField.FieldType.Name);
 	}
 	
-	public override string getId() {
+	public override string GetId() {
 		return id;
 	}
 
-	public override bool hasPotentialMatch() {
+	public override bool HasPotentialMatch() {
 		throw new NotImplementedException();
 	}
 
-	public override bool isMatchable() {
-		return matchable && containingType.isMatchable();
+	public override bool IsMatchable() {
+		return matchable && ContainingType.IsMatchable();
 	}
 
-	public override bool setMatchable(bool matchable) {
+	public override bool SetMatchable(bool matchable) {
 		if (!matchable && matchedField != null) return false;
-		if (matchable && !containingType.isMatchable()) return false;
+		if (matchable && !ContainingType.IsMatchable()) return false;
 
 		this.matchable = matchable;
 
 		return true;
 	}
 
-	public override FieldInstance? getMatch() {
+	public override FieldInstance? GetMatch() {
 		return matchedField;
 	}
 
-	public void setMatch(FieldInstance? field) {
+	public void SetMatch(FieldInstance? field) {
 		matchedField = field;
 	}
 
-	public override Matchable getOwner() {
+	public override Matchable GetOwner() {
 		throw new NotImplementedException();
 	}
 
-	public override bool isFullyMatched(bool recursive) {
+	public override bool IsFullyMatched(bool recursive) {
 		throw new NotImplementedException();
 	}
 
-	public static string getId(string name, string desc) {
+	public static string GetId(string name, string desc) {
 		return name + ";;" + desc;
 	}
 }

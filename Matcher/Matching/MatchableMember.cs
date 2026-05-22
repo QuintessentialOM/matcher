@@ -4,12 +4,12 @@ using Mono.Cecil;
 namespace Matcher.Matching;
 
 public abstract class MatchableMember : MatchableMemberOrClass {
-	public TypeInstance containingType { get; init; }
-	public int position { get; init; }
+	public TypeInstance ContainingType { get; init; }
+	public int Position { get; init; }
 
 	[SetsRequiredMembers]
 	public MatchableMember(LocalClassEnv env, TypeInstance containingType, MemberReference cecilMemberReference, int position, bool isNameObfuscated) : base(env, cecilMemberReference, cecilMemberReference.Name, isNameObfuscated) {
-		this.containingType = containingType;
-		this.position = position;
+		this.ContainingType = containingType;
+		this.Position = position;
 	}
 }

@@ -7,20 +7,20 @@ namespace Matcher.Matching;
 // }
 
 public abstract class Matchable {
-	public LocalClassEnv env { get; init; }
-	public bool isNameObfuscated { get; init; }
+	public LocalClassEnv Env { get; init; }
+	public bool IsNameObfuscated { get; init; }
 
 	[SetsRequiredMembers]
 	public Matchable(LocalClassEnv env, bool isNameObfuscated) {
-		this.env = env;
-		this.isNameObfuscated = isNameObfuscated;
+		Env = env;
+		IsNameObfuscated = isNameObfuscated;
 	}
 
 	// public abstract MatchableKind getKind();
 
 	// combination of name and other metadata e.g. method sig, field type
-	public abstract string getId();
-	public abstract string getName();
+	public abstract string GetId();
+	public abstract string GetName();
 	// public abstract string getName(NameType type);
 
 	// string getDisplayName(NameType type, bool full) {
@@ -34,24 +34,24 @@ public abstract class Matchable {
 	// public abstract string getMappedComment();
 	// public abstract void setMappedComment(string comment);
 
-	public abstract Matchable getOwner();
+	public abstract Matchable GetOwner();
 	// public abstract ClassEnv getEnv();
 
 	// public abstract int getUid();
 
-	public abstract bool hasPotentialMatch();
+	public abstract bool HasPotentialMatch();
 
-	public abstract bool isMatchable();
-	public abstract bool setMatchable(bool matchable);
+	public abstract bool IsMatchable();
+	public abstract bool SetMatchable(bool matchable);
 
-	public bool hasMatch() {
-		return getMatch() != null;
+	public bool HasMatch() {
+		return GetMatch() != null;
 	}
 
-	public abstract Matchable? getMatch();
+	public abstract Matchable? GetMatch();
 	// no base class setMatch due to method parameter contravariance
 
 
-	public abstract bool isFullyMatched(bool recursive);
+	public abstract bool IsFullyMatched(bool recursive);
 	// public abstract float getSimilarity();
 }

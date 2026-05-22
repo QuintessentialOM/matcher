@@ -10,16 +10,16 @@ using Mono.Cecil.Cil;
 namespace Matcher;
 
 public class Matcher {
-	public static readonly Regex NonObfuscatedPattern = new Regex("^[a-zA-Z_\\`][a-zA-Z0-9_\\`]*(\\[])*$");
+	public static readonly Regex NonObfuscatedPattern = new("^[a-zA-Z_\\`][a-zA-Z0-9_\\`]*(\\[])*$");
 
 	public MatchingEnv env;
-	LocalClassEnv envA;
-	LocalClassEnv envB;
+	readonly LocalClassEnv envA;
+	readonly LocalClassEnv envB;
 
 	public Matcher() {
 		env = new();
-		envA = env.envA;
-		envB = env.envB;
+		envA = env.EnvA;
+		envB = env.EnvB;
 	}
 
 
@@ -149,9 +149,9 @@ public class Matcher {
 	}
 
 	private void InitTypeA(TypeInstance cls, LocalClassEnv env) {
-		foreach (var (position, method) in cls.cecilType.Methods.WithIndex()) {
+		foreach (var (position, method) in cls.CecilType.Methods.WithIndex()) {
 			var methodInstance = new MethodInstance(env, cls, method, position, !NonObfuscatedPattern.IsMatch(method.Name));
-			cls.methodsById[methodInstance.getId()] = methodInstance;
+			cls.methodsById[methodInstance.GetId()] = methodInstance;
 			cls.methodsOrdered.Add(methodInstance);
 
 			// Collect strings in method bodies. C# sets fields in constructor + static constructor so this should account for initialized string fields too... I think?
@@ -164,30 +164,30 @@ public class Matcher {
 				}
 			}
 		}
-		foreach (var (position, field) in cls.cecilType.Fields.WithIndex()) {
+		foreach (var (position, field) in cls.CecilType.Fields.WithIndex()) {
 			var fieldInstance = new FieldInstance(env, cls, field, position, !NonObfuscatedPattern.IsMatch(field.Name));
-			cls.fieldsById[fieldInstance.getId()] = fieldInstance;
+			cls.fieldsById[fieldInstance.GetId()] = fieldInstance;
 			cls.fieldsOrdered.Add(fieldInstance);
 		}
-		foreach (var (position, genericParam) in cls.cecilType.GenericParameters.WithIndex()) {
+		foreach (var (position, genericParam) in cls.CecilType.GenericParameters.WithIndex()) {
 			var genericParamInstance = new GenericParamInstance(env, cls, genericParam, position, !NonObfuscatedPattern.IsMatch(genericParam.Name));
-			cls.genericParamsById[genericParamInstance.getId()] = genericParamInstance;
+			cls.genericParamsById[genericParamInstance.GetId()] = genericParamInstance;
 			cls.genericParamsOrdered.Add(genericParamInstance);
 		}
 
-		var parent = cls.cecilType.BaseType;
+		var parent = cls.CecilType.BaseType;
 		if (parent != null) {
-			var parentTypeInstance = env.getCreateTypeInstance(parent.Name);
+			var parentTypeInstance = env.GetCreateTypeInstance(parent.Name);
 			parentTypeInstance.childTypes.Add(cls);
 			cls.baseType = parentTypeInstance;
 		}
-		foreach (var nestedType in cls.cecilType.NestedTypes) {
-			var nestedTypeInstance = env.getCreateTypeInstance(nestedType.Name);
+		foreach (var nestedType in cls.CecilType.NestedTypes) {
+			var nestedTypeInstance = env.GetCreateTypeInstance(nestedType.Name);
 			nestedTypeInstance.outerType = cls;
 			cls.nestedTypes.Add(nestedTypeInstance);
 		}
-		foreach (var iface in cls.cecilType.Interfaces) {
-			var ifaceInstance = env.getCreateTypeInstance(iface.InterfaceType.Name);
+		foreach (var iface in cls.CecilType.Interfaces) {
+			var ifaceInstance = env.GetCreateTypeInstance(iface.InterfaceType.Name);
 			ifaceInstance.implementedBy.Add(cls);
 			cls.interfaces.Add(ifaceInstance);
 		}
@@ -195,30 +195,30 @@ public class Matcher {
 
 	private void InitTypeB(TypeInstance cls, LocalClassEnv env) {
 		foreach (MethodInstance method in cls.methodsOrdered) {
-			processMethodInsns(env, method);
+			ProcessMethodInsns(env, method);
 		}
 	}
 
-	private void processMethodInsns(LocalClassEnv env, MethodInstance method) {
+	private void ProcessMethodInsns(LocalClassEnv env, MethodInstance method) {
 		// if (!method.isReal()) { // artificial method to capture calls to types with incomplete/unknown hierarchy/super type method info
 		// 	logger.debug("Skipping empty method {}", method);
 		// 	return;
 		// }
 
-		if (method.cecilMethod == null || method.cecilMethod.Body == null || method.cecilMethod.Body.Instructions == null) {
+		if (method.CecilMethod == null || method.CecilMethod.Body == null || method.CecilMethod.Body.Instructions == null) {
 			return;
 		}
 
-		foreach (var instr in method.cecilMethod.Body.Instructions) {
+		foreach (var instr in method.CecilMethod.Body.Instructions) {
 			if (instr == null) continue;
 			// TODO does this cover all (non-dynamic) method invocations? does it include calling ctors?
 			if (instr.Operand is MethodReference mref/* && !mref.IsWindowsRuntimeProjection*/) {
-				handleMethodInvocation(env, method, mref.DeclaringType.Name, mref.Name, null); // TODO desc
+				HandleMethodInvocation(env, method, mref.DeclaringType.Name, mref.Name, null); // TODO desc
 			}
 
 			if (instr.Operand is FieldReference fref) {
-				var owner = env.getCreateTypeInstance(fref.DeclaringType.Name);
-				var fieldInstance = owner.getField(fref.Name, fref.FieldType.Name);
+				var owner = env.GetCreateTypeInstance(fref.DeclaringType.Name);
+				var fieldInstance = owner.GetField(fref.Name, fref.FieldType.Name);
 				if (fieldInstance == null) {
 					continue; // TODO
 				}
@@ -300,21 +300,21 @@ public class Matcher {
 		}
 	}
 
-	private void handleMethodInvocation(LocalClassEnv env, MethodInstance method, string rawOwner, string name, string? desc) {
-		MethodInstance dst = resolveMethod(env, rawOwner, name, desc, true)!;
+	private void HandleMethodInvocation(LocalClassEnv env, MethodInstance method, string rawOwner, string name, string? desc) {
+		MethodInstance dst = ResolveMethod(env, rawOwner, name, desc, true)!;
 		if (dst == null) return; // TODO
 
 		dst.refsIn.Add(method);
 		method.refsOut.Add(dst);
-		dst.containingType.methodTypeRefs.Add(method);
-		method.typeRefs.Add(dst.containingType);
+		dst.ContainingType.methodTypeRefs.Add(method);
+		method.typeRefs.Add(dst.ContainingType);
 	}
 
-	private MethodInstance? resolveMethod(LocalClassEnv env, string owner, string name, string? desc, bool create) {
-		TypeInstance? cls = env.getCreateTypeInstance(owner, create);
+	private MethodInstance? ResolveMethod(LocalClassEnv env, string owner, string name, string? desc, bool create) {
+		TypeInstance? cls = env.GetCreateTypeInstance(owner, create);
 		if (cls == null) return null;
 
-		MethodInstance? ret = cls.getMethod(name, desc);
+		MethodInstance? ret = cls.GetMethod(name, desc);
 
 		if (ret == null && create) {
 			// TODO
@@ -351,12 +351,12 @@ public class Matcher {
 			foreach (MethodInstance method in cls.methodsOrdered) {
 				MethodInstance? prev;
 
-				if (isHierarchyBarrier(method)) {
+				if (IsHierarchyBarrier(method)) {
 					if (method.hierarchyData == null) {
 						method.hierarchyData = new MethodHierarchyData();
 						method.hierarchyData.members.Add(method);
 					}
-				} else if ((prev = methods!.GetValueOrDefault(method.getId(), null)) != null) {
+				} else if ((prev = methods!.GetValueOrDefault(method.GetId(), null)) != null) {
 					if (method.hierarchyData == null) {
 						method.hierarchyData = prev.hierarchyData;
 						method.hierarchyData!.members.Add(method);
@@ -367,7 +367,7 @@ public class Matcher {
 						}
 					}
 				} else {
-					methods[method.getId()] = method;
+					methods[method.GetId()] = method;
 
 					if (method.hierarchyData == null) {
 						method.hierarchyData = new MethodHierarchyData();
@@ -383,24 +383,24 @@ public class Matcher {
 		}
 	}
 
-	private static bool isHierarchyBarrier(MethodInstance method) {
+	private static bool IsHierarchyBarrier(MethodInstance method) {
 		// TODO handle case where cecilMethod == null
-		return method.cecilMethod == null || method.cecilMethod.IsStatic || method.cecilMethod.IsPrivate;
+		return method.CecilMethod == null || method.CecilMethod.IsStatic || method.CecilMethod.IsPrivate;
 	}
 
 	private void InitTypeD(TypeInstance cls) {
 		// assert cls.initStep == 3;
 
 		Queue<TypeInstance> toCheck = new();
-		HashSet<TypeInstance> checked_ = new();
-		HashSet<MethodHierarchyData> nameObfChecked = new();
+		HashSet<TypeInstance> checked_ = [];
+		HashSet<MethodHierarchyData> nameObfChecked = [];
 
 		foreach (MethodInstance method in cls.methodsOrdered) {
 			// assert method.hierarchyData != null;
 
 			
 			if (method.hierarchyData!.members.Count > 1) { // may have parent/child methods
-				determineMethodRelations(method, toCheck, checked_);
+				DetermineMethodRelations(method, toCheck, checked_);
 
 				// No idea why fabric matcher tracks name obfuscation state - shouldn't this be the same for all methods in a hierarchy, since they all have the same name??
 				// // update name obfuscated state if not done yet, the name is only obfuscated if it is for all hierarchy members
@@ -419,22 +419,22 @@ public class Matcher {
 		}
 	}
 
-	private static void determineMethodRelations(MethodInstance method, Queue<TypeInstance> toCheck, HashSet<TypeInstance> checked_) {
+	private static void DetermineMethodRelations(MethodInstance method, Queue<TypeInstance> toCheck, HashSet<TypeInstance> checked_) {
 		// if (method.origName.equals("<init>") || method.origName.equals("<clinit>")) return;
-		if (method.getName() == ".ctor") return;
-		if (isHierarchyBarrier(method)) return;
+		if (method.GetName() == ".ctor") return;
+		if (IsHierarchyBarrier(method)) return;
 
-		if (method.containingType.baseType != null) toCheck.Enqueue(method.containingType.baseType);
-		method.containingType.interfaces.ForEach(toCheck.Enqueue);
+		if (method.ContainingType.baseType != null) toCheck.Enqueue(method.ContainingType.baseType);
+		method.ContainingType.interfaces.ForEach(toCheck.Enqueue);
 		TypeInstance cls;
 
 		while (toCheck.Count > 0) {
 			cls = toCheck.Dequeue();
 			if (!checked_.Add(cls)) continue;
 
-			MethodInstance? m = cls.methodsById!.GetValueOrDefault(method.getId(), null);
+			MethodInstance? m = cls.methodsById!.GetValueOrDefault(method.GetId(), null);
 
-			if (m != null && !isHierarchyBarrier(m)) { // skips over private or static methods
+			if (m != null && !IsHierarchyBarrier(m)) { // skips over private or static methods
 				method.parents.Add(m);
 				m.children.Add(method);
 			} else {
@@ -465,9 +465,9 @@ public class Matcher {
 	private void MatchUnobfuscated() {
 		foreach (var typeName in envA.types.Keys) {
 			var type = envA.types[typeName];
-			if (type.isNameObfuscated) continue;
+			if (type.IsNameObfuscated) continue;
 			var match = envB.types!.GetValueOrDefault(typeName, null);
-			if (match != null && !match.isNameObfuscated) {
+			if (match != null && !match.IsNameObfuscated) {
 				MatchType(type, match);
 			}
 		}
@@ -476,35 +476,35 @@ public class Matcher {
 	public void MatchType(TypeInstance a, TypeInstance b) {
 		if (a == null) throw new NullReferenceException("null class A");
 		if (b == null) throw new NullReferenceException("null class B");
-		if (a.getArrayDimensions() != b.getArrayDimensions()) throw new ArgumentException("the classes don't have the same amount of array dimensions");
-		if (a.getMatch() == b) return;
+		if (a.GetArrayDimensions() != b.GetArrayDimensions()) throw new ArgumentException("the classes don't have the same amount of array dimensions");
+		if (a.GetMatch() == b) return;
 
 		// TODO logger
 		// LOGGER.debug("Matching class {} => {}{}", a, b, (a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
-		if (a.getMatch() != null) {
-			a.getMatch()!.setMatch(null);
+		if (a.GetMatch() != null) {
+			a.GetMatch()!.SetMatch(null);
 			UnmatchMembersAndGenerics(a);
 		}
 
-		if (b.getMatch() != null) {
-			b.getMatch()!.setMatch(null);
+		if (b.GetMatch() != null) {
+			b.GetMatch()!.SetMatch(null);
 			UnmatchMembersAndGenerics(b);
 		}
 
-		a.setMatch(b);
-		b.setMatch(a);
+		a.SetMatch(b);
+		b.SetMatch(a);
 
 		// match all array dimensionalities for the corresponding type
-		if (a.isArray()) {
+		if (a.IsArray()) {
 			var elemA = a.elementType;
-			if (!elemA!.hasMatch()) MatchType(elemA, b.elementType!);
+			if (!elemA!.HasMatch()) MatchType(elemA, b.elementType!);
 		} else {
 			foreach (var arrayA in a.arrays) {
-				var dims = arrayA.getArrayDimensions();
+				var dims = arrayA.GetArrayDimensions();
 
 				foreach (var arrayB in b.arrays) {
-					if (arrayB.hasMatch() || arrayB.getArrayDimensions() != dims) continue;
+					if (arrayB.HasMatch() || arrayB.GetArrayDimensions() != dims) continue;
 					MatchType(arrayA, arrayB);
 					break;
 				}
@@ -512,16 +512,16 @@ public class Matcher {
 		}
 
 		foreach (MethodInstance src in a.methodsById.Values) {
-			if (!src.isNameObfuscated) {
-				MethodInstance? dst = b.methodsById!.GetValueOrDefault(src.getId(), null);
+			if (!src.IsNameObfuscated) {
+				MethodInstance? dst = b.methodsById!.GetValueOrDefault(src.GetId(), null);
 
-				if ((dst != null || (dst = b.getMethod(src.getName(), null)) != null) && !dst.isNameObfuscated) { // full match or name match with no alternatives
+				if ((dst != null || (dst = b.GetMethod(src.GetName(), null)) != null) && !dst.IsNameObfuscated) { // full match or name match with no alternatives
 					MatchMethod(src, dst!);
 					continue;
 				}
 			}
 
-			MethodHierarchyData? matchedDst = src.hierarchyData?.matchedHierarchy;
+			MethodHierarchyData? matchedDst = src.hierarchyData?.MatchedHierarchy;
 			if (matchedDst == null) continue;
 
 			ISet<MethodInstance> dstHierarchyMembers = matchedDst!.members;
@@ -529,8 +529,8 @@ public class Matcher {
 
 			foreach (MethodInstance dst in b.methodsById.Values) {
 				if (dstHierarchyMembers.Contains(dst)) {
-					src.setMatchable(true);
-					dst.setMatchable(true);
+					src.SetMatchable(true);
+					dst.SetMatchable(true);
 					MatchMethod(src, dst);
 					break;
 				}
@@ -540,10 +540,10 @@ public class Matcher {
 		// match fields that are not obfuscated
 
 		foreach (FieldInstance src in a.fieldsById.Values) {
-			if (!src.isNameObfuscated) {
-				FieldInstance? dst = b.fieldsById!.GetValueOrDefault(src.getId(), null);
+			if (!src.IsNameObfuscated) {
+				FieldInstance? dst = b.fieldsById!.GetValueOrDefault(src.GetId(), null);
 
-				if ((dst != null || (dst = b.getField(src.getName(), null)) != null) && !dst.isNameObfuscated) { // full match or name match with no alternatives
+				if ((dst != null || (dst = b.GetField(src.GetName(), null)) != null) && !dst.IsNameObfuscated) { // full match or name match with no alternatives
 					MatchField(src, dst);
 				}
 			}
@@ -556,7 +556,7 @@ public class Matcher {
 		if (a == null) throw new NullReferenceException("null method A");
 		if (b == null) throw new NullReferenceException("null method B");
 		// if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
-		if (a.getMatch() == b) return;
+		if (a.GetMatch() == b) return;
 
 		// LOGGER.debug("Matching method {} => {}{}", a, b, (a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
@@ -565,23 +565,23 @@ public class Matcher {
 		// assert membersA.contains(a);
 		// assert membersB.contains(b);
 
-		if (a.hierarchyData != null && a.hierarchyData.matchedHierarchy != b.hierarchyData) {
-			if (a.hierarchyData?.matchedHierarchy != null) {
+		if (a.hierarchyData != null && a.hierarchyData.MatchedHierarchy != b.hierarchyData) {
+			if (a.hierarchyData?.MatchedHierarchy != null) {
 				foreach (MethodInstance m in membersA!) {
-					if (m.hasMatch()) {
+					if (m.HasMatch()) {
 						UnmatchMethodParams(m);
-						m.getMatch()!.setMatch(null);
-						m.setMatch(null);
+						m.GetMatch()!.SetMatch(null);
+						m.SetMatch(null);
 					}
 				}
 			}
 
-			if (b.hierarchyData?.matchedHierarchy != null) {
+			if (b.hierarchyData?.MatchedHierarchy != null) {
 				foreach (MethodInstance m in membersB!) {
-					if (m.hasMatch()) {
+					if (m.HasMatch()) {
 						UnmatchMethodParams(m);
-						m.getMatch()!.setMatch(null);
-						m.setMatch(null);
+						m.GetMatch()!.SetMatch(null);
+						m.SetMatch(null);
 					}
 				}
 			}
@@ -590,34 +590,34 @@ public class Matcher {
 
 			if (membersA != null && membersB != null) {
 				foreach (MethodInstance ca in membersA) {
-					TypeInstance cls = ca.containingType;
-					if (!cls.hasMatch()/* || cls.getEnv() != reqEnv*/) continue;
+					TypeInstance cls = ca.ContainingType;
+					if (!cls.HasMatch()/* || cls.getEnv() != reqEnv*/) continue;
 
-					foreach (MethodInstance cb in cls.getMatch()!.methodsById.Values) {
+					foreach (MethodInstance cb in cls.GetMatch()!.methodsById.Values) {
 						if (membersB.Contains(cb)) {
 							// assert !ca.hasMatch() && !cb.hasMatch();
-							ca.setMatch(cb);
-							cb.setMatch(ca);
+							ca.SetMatch(cb);
+							cb.SetMatch(ca);
 							break;
 						}
 					}
 				}
 			}
 		} else {
-			if (a.getMatch() != null) {
+			if (a.GetMatch() != null) {
 				UnmatchMethodParams(a);
-				a.getMatch()!.setMatch(null);
-				a.setMatch(null);
+				a.GetMatch()!.SetMatch(null);
+				a.SetMatch(null);
 			}
 
-			if (b.getMatch() != null) {
+			if (b.GetMatch() != null) {
 				UnmatchMethodParams(b);
-				b.getMatch()!.setMatch(null);
-				b.setMatch(null);
+				b.GetMatch()!.SetMatch(null);
+				b.SetMatch(null);
 			}
 
-			a.setMatch(b);
-			b.setMatch(a);
+			a.SetMatch(b);
+			b.SetMatch(a);
 		}
 	}
 
@@ -625,30 +625,30 @@ public class Matcher {
 		if (a == null) throw new NullReferenceException("null generic param A");
 		if (b == null) throw new NullReferenceException("null generic param B");
 		// if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
-		if (a.getMatch() == b) return;
+		if (a.GetMatch() == b) return;
 
 		// LOGGER.debug("Matching field {} => {}{}", a, b, (a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
-		if (a.getMatch() != null) a.getMatch()!.setMatch(null);
-		if (b.getMatch() != null) b.getMatch()!.setMatch(null);
+		if (a.GetMatch() != null) a.GetMatch()!.SetMatch(null);
+		if (b.GetMatch() != null) b.GetMatch()!.SetMatch(null);
 
-		a.setMatch(b);
-		b.setMatch(a);
+		a.SetMatch(b);
+		b.SetMatch(a);
 	}
 
 	public void MatchField(FieldInstance a, FieldInstance b) {
 		if (a == null) throw new NullReferenceException("null field A");
 		if (b == null) throw new NullReferenceException("null field B");
 		// if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
-		if (a.getMatch() == b) return;
+		if (a.GetMatch() == b) return;
 
 		// LOGGER.debug("Matching field {} => {}{}", a, b, (a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
-		if (a.getMatch() != null) a.getMatch()!.setMatch(null);
-		if (b.getMatch() != null) b.getMatch()!.setMatch(null);
+		if (a.GetMatch() != null) a.GetMatch()!.SetMatch(null);
+		if (b.GetMatch() != null) b.GetMatch()!.SetMatch(null);
 
-		a.setMatch(b);
-		b.setMatch(a);
+		a.SetMatch(b);
+		b.SetMatch(a);
 	}
 
 	public void MatchMethodParam(MethodParamInstance a, MethodParamInstance b) {
@@ -656,29 +656,29 @@ public class Matcher {
 		if (b == null) throw new NullReferenceException("null method var B");
 		// if (a.getMethod().getMatch() != b.getMethod()) throw new IllegalArgumentException("the method vars don't belong to the same method");
 		// if (a.isArg() != b.isArg()) throw new IllegalArgumentException("the method vars are not of the same kind");
-		if (a.getMatch() == b) return;
+		if (a.GetMatch() == b) return;
 
 		// LOGGER.debug("Matching method arg {} => {}{}", a, b, (a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
-		if (a.getMatch() != null) a.getMatch()!.setMatch(null);
-		if (b.getMatch() != null) b.getMatch()!.setMatch(null);
+		if (a.GetMatch() != null) a.GetMatch()!.SetMatch(null);
+		if (b.GetMatch() != null) b.GetMatch()!.SetMatch(null);
 
-		a.setMatch(b);
-		b.setMatch(a);
+		a.SetMatch(b);
+		b.SetMatch(a);
 	}
 
 	public void UnmatchType(TypeInstance cls) {
 		if (cls == null) throw new NullReferenceException("null class");
-		if (cls.getMatch() == null) return;
+		if (cls.GetMatch() == null) return;
 
 		// LOGGER.debug("Unmatching class {} (was {}){}", cls, cls.getMatch(), (cls.hasMappedName() ? " ("+cls.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
-		cls.getMatch()!.setMatch(null);
-		cls.setMatch(null);
+		cls.GetMatch()!.SetMatch(null);
+		cls.SetMatch(null);
 
 		UnmatchMembersAndGenerics(cls);
 
-		if (cls.isArray()) {
+		if (cls.IsArray()) {
 			UnmatchType(cls.elementType!);
 		} else {
 			foreach (TypeInstance array in cls.arrays) {
@@ -689,39 +689,39 @@ public class Matcher {
 
 	private static void UnmatchMembersAndGenerics(TypeInstance cls) {
 		foreach (MethodInstance m in cls.methodsById.Values) {
-			if (m.getMatch() != null) {
-				m.getMatch()!.setMatch(null);
-				m.setMatch(null);
+			if (m.GetMatch() != null) {
+				m.GetMatch()!.SetMatch(null);
+				m.SetMatch(null);
 
 				UnmatchMethodParams(m);
 			}
 		}
 
 		foreach (FieldInstance m in cls.fieldsById.Values) {
-			if (m.getMatch() != null) {
-				m.getMatch()!.setMatch(null);
-				m.setMatch(null);
+			if (m.GetMatch() != null) {
+				m.GetMatch()!.SetMatch(null);
+				m.SetMatch(null);
 			}
 		}
 
 		foreach (GenericParamInstance m in cls.genericParamsById.Values) {
-			if (m.getMatch() != null) {
-				m.getMatch()!.setMatch(null);
-				m.setMatch(null);
+			if (m.GetMatch() != null) {
+				m.GetMatch()!.SetMatch(null);
+				m.SetMatch(null);
 			}
 		}
 	}
 
 	public void UnmatchMethod(MethodInstance m) {
 		if (m == null) throw new NullReferenceException("null member");
-		if (m.getMatch() == null) return;
+		if (m.GetMatch() == null) return;
 
 		// LOGGER.debug("Unmatching member {} (was {}){}", m, m.getMatch(), (m.hasMappedName() ? " ("+m.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
 		UnmatchMethodParams(m);
 
-		m.getMatch()!.setMatch(null);
-		m.setMatch(null);
+		m.GetMatch()!.SetMatch(null);
+		m.SetMatch(null);
 
 		if (m.hierarchyData != null) {
 			foreach (MethodInstance member in m.hierarchyData.members) {
@@ -732,39 +732,39 @@ public class Matcher {
 
 	public void UnmatchField(FieldInstance f) {
 		if (f == null) throw new NullReferenceException("null member");
-		if (f.getMatch() == null) return;
+		if (f.GetMatch() == null) return;
 
 		// LOGGER.debug("Unmatching member {} (was {}){}", f, f.getMatch(), (f.hasMappedName() ? " ("+f.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
-		f.getMatch()!.setMatch(null);
-		f.setMatch(null);
+		f.GetMatch()!.SetMatch(null);
+		f.SetMatch(null);
 	}
 
 	public void UnmatchGenericParam(GenericParamInstance f) {
 		if (f == null) throw new NullReferenceException("null member");
-		if (f.getMatch() == null) return;
+		if (f.GetMatch() == null) return;
 
 		// LOGGER.debug("Unmatching member {} (was {}){}", f, f.getMatch(), (f.hasMappedName() ? " ("+f.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
-		f.getMatch()!.setMatch(null);
-		f.setMatch(null);
+		f.GetMatch()!.SetMatch(null);
+		f.SetMatch(null);
 	}
 
 	public void UnmatchMethodParam(MethodParamInstance a) {
 		if (a == null) throw new NullReferenceException("null method param");
-		if (a.getMatch() == null) return;
+		if (a.GetMatch() == null) return;
 
 		// LOGGER.debug("Unmatching method var {} (was {}){}", a, a.getMatch(), (a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
-		a.getMatch()!.setMatch(null);
-		a.setMatch(null);
+		a.GetMatch()!.SetMatch(null);
+		a.SetMatch(null);
 	}
 
 	private static void UnmatchMethodParams(MethodInstance m) {
 		foreach (MethodParamInstance arg in m.args) {
-			if (arg.getMatch() != null) {
-				arg.getMatch()!.setMatch(null);
-				arg.setMatch(null);
+			if (arg.GetMatch() != null) {
+				arg.GetMatch()!.SetMatch(null);
+				arg.SetMatch(null);
 			}
 		}
 	}
@@ -798,20 +798,20 @@ public class Matcher {
 	public const bool assumeBothOrNoneObfuscated = false;
 
 
-	public void autoMatchAll(Action<double> progressReceiver) {
-		Console.WriteLine($"initial {getStatus(true)}");
-		if (autoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)) {
-			Console.WriteLine($"classes {getStatus(true)}");
-			autoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+	public void AutoMatchAll(Action<double> progressReceiver) {
+		Console.WriteLine($"initial {GetStatus(true)}");
+		if (AutoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)) {
+			Console.WriteLine($"classes {GetStatus(true)}");
+			AutoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
 		}
-		Console.WriteLine($"classes {getStatus(true)}");
+		Console.WriteLine($"classes {GetStatus(true)}");
 
-		autoMatchLevel(ClassifierLevel.Intermediate, progressReceiver);
-		Console.WriteLine($"intermediate {getStatus(true)}");
-		autoMatchLevel(ClassifierLevel.Full, progressReceiver);
-		Console.WriteLine($"full {getStatus(true)}");
-		autoMatchLevel(ClassifierLevel.Extra, progressReceiver);
-		Console.WriteLine($"extra {getStatus(true)}");
+		AutoMatchLevel(ClassifierLevel.Intermediate, progressReceiver);
+		Console.WriteLine($"intermediate {GetStatus(true)}");
+		AutoMatchLevel(ClassifierLevel.Full, progressReceiver);
+		Console.WriteLine($"full {GetStatus(true)}");
+		AutoMatchLevel(ClassifierLevel.Extra, progressReceiver);
+		Console.WriteLine($"extra {GetStatus(true)}");
 
 		// bool matchedAny;
 
@@ -822,36 +822,36 @@ public class Matcher {
 		// } while (matchedAny);
 	}
 
-	private void autoMatchLevel(ClassifierLevel level, Action<double> progressReceiver) {
+	private void AutoMatchLevel(ClassifierLevel level, Action<double> progressReceiver) {
 		bool matchedAny;
 		bool matchedClassesBefore = true;
 
 		do {
-			matchedAny = autoMatchMethods(level, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
-			matchedAny |= autoMatchFields(level, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
+			matchedAny = AutoMatchMethods(level, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
+			matchedAny |= AutoMatchFields(level, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
 
 			if (!matchedAny && !matchedClassesBefore) {
 				break;
 			}
 
-			matchedAny |= matchedClassesBefore = autoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+			matchedAny |= matchedClassesBefore = AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
 		} while (matchedAny);
 	}
 
-	public bool autoMatchClasses(Action<double> progressReceiver) {
-		return autoMatchClasses(autoMatchMaxLevel, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+	public bool AutoMatchClasses(Action<double> progressReceiver) {
+		return AutoMatchClasses(autoMatchMaxLevel, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
 	}
 
-	public bool autoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
-		Func<TypeInstance, bool> filter = cls => cls.isReal() && (!assumeBothOrNoneObfuscated || cls.isNameObfuscated) && !cls.hasMatch() && cls.isMatchable();
+	public bool AutoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
+		static bool filter(TypeInstance cls) => cls.IsReal() && (!assumeBothOrNoneObfuscated || cls.IsNameObfuscated) && !cls.HasMatch() && cls.IsMatchable();
 
-		List<TypeInstance> classes = new List<TypeInstance>(envA.types.Values).Where(filter).ToList();
+		List<TypeInstance> classes = [.. new List<TypeInstance>(envA.types.Values).Where(filter)];
 
 		// TypeInstance[] cmpClasses = new List<TypeInstance>(envB.types.Values).Where(filter).ToList();
-		List<TypeInstance> cmpClasses = new List<TypeInstance>(envB.types.Values).Where(filter).ToList();
+		List<TypeInstance> cmpClasses = [.. new List<TypeInstance>(envB.types.Values).Where(filter)];
 
-		double maxScore = TypeClassifier.getMaxScore(level);
-		double maxMismatch = maxScore - ClassifierUtil.getRawScore(absThreshold * (1 - relThreshold), maxScore);
+		double maxScore = TypeClassifier.GetMaxScore(level);
+		double maxMismatch = maxScore - ClassifierUtil.GetRawScore(absThreshold * (1 - relThreshold), maxScore);
 		Dictionary<TypeInstance, TypeInstance> matches = [];//new ConcurrentHashDictionary<>(classes.Count);
 
 		// runInParallel(classes, cls => {
@@ -865,16 +865,16 @@ public class Matcher {
 		// }, progressReceiver);
 
 		foreach (var cls in classes) {
-			List<RankResult<TypeInstance>> ranking = TypeClassifier.rank(cls, cmpClasses.ToArray(), level, env, maxMismatch);
+			List<RankResult<TypeInstance>> ranking = TypeClassifier.Rank(cls, [.. cmpClasses], level, env, maxMismatch);
 
-			if (ClassifierUtil.checkRank(ranking, absThreshold, relThreshold, maxScore)) {
-				TypeInstance match = ranking[0].subject;
+			if (ClassifierUtil.CheckRank(ranking, absThreshold, relThreshold, maxScore)) {
+				TypeInstance match = ranking[0].Subject;
 
 				matches[cls] = match;
 			}
 		}
 
-		sanitizeMatches(matches);
+		SanitizeMatches(matches);
 
 		foreach (var entry in matches) {
 			MatchType(entry.Key, entry.Value);
@@ -912,14 +912,14 @@ public class Matcher {
 	// 	}
 	// }
 
-	public bool autoMatchMethods(Action<double> progressReceiver) {
-		return autoMatchMethods(autoMatchMaxLevel, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
+	public bool AutoMatchMethods(Action<double> progressReceiver) {
+		return AutoMatchMethods(autoMatchMaxLevel, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
 	}
 
-	public bool autoMatchMethods(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
+	public bool AutoMatchMethods(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
 		int totalUnmatched = 0; // originally AtomicInteger
-		Dictionary<MethodInstance, MethodInstance> matches = matchMembers(level, absThreshold, relThreshold,
-				cls => cls.methodsById.Values.ToArray(), MethodClassifier.rank, MethodClassifier.getMaxScore(level),
+		Dictionary<MethodInstance, MethodInstance> matches = MatchMembers(level, absThreshold, relThreshold,
+				cls => cls.methodsById.Values.ToArray(), MethodClassifier.Rank, MethodClassifier.GetMaxScore(level),
 				progressReceiver, ref totalUnmatched);
 
 		foreach (var entry in matches) {
@@ -931,16 +931,16 @@ public class Matcher {
 		return matches.Count != 0;
 	}
 
-	public bool autoMatchFields(Action<double> progressReceiver) {
-		return autoMatchFields(autoMatchMaxLevel, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
+	public bool AutoMatchFields(Action<double> progressReceiver) {
+		return AutoMatchFields(autoMatchMaxLevel, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
 	}
 
-	public bool autoMatchFields(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
+	public bool AutoMatchFields(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
 		int totalUnmatched = 0; // originally AtomicInteger
-		double maxScore = FieldClassifier.getMaxScore(level);
+		double maxScore = FieldClassifier.GetMaxScore(level);
 
-		Dictionary<FieldInstance, FieldInstance> matches = matchMembers(level, absThreshold, relThreshold,
-				cls => cls.fieldsById.Values.ToArray(), FieldClassifier.rank, maxScore,
+		Dictionary<FieldInstance, FieldInstance> matches = MatchMembers(level, absThreshold, relThreshold,
+				cls => cls.fieldsById.Values.ToArray(), FieldClassifier.Rank, maxScore,
 				progressReceiver, ref totalUnmatched);
 
 		foreach (var entry in matches) {
@@ -955,14 +955,14 @@ public class Matcher {
 	delegate List<RankResult<T>> IRanker<T>(T src, T[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch);
 
 	// <T extends MemberInstance<T>>
-	private Dictionary<T, T> matchMembers<T>(ClassifierLevel level, double absThreshold, double relThreshold,
+	private Dictionary<T, T> MatchMembers<T>(ClassifierLevel level, double absThreshold, double relThreshold,
 			Func<TypeInstance, T[]> memberGetter, IRanker<T> ranker, double maxScore,
 			Action<double> progressReceiver, ref int totalUnmatched) where T : MatchableMember {
-		List<TypeInstance> classes = env.envA.types.Values
-				.Where(cls => /*cls.isReal() &&*/ cls.hasMatch() && memberGetter.Invoke(cls).Length > 0)
+		List<TypeInstance> classes = env.EnvA.types.Values
+				.Where(cls => /*cls.isReal() &&*/ cls.HasMatch() && memberGetter.Invoke(cls).Length > 0)
 				.Where(cls => {
 					foreach (T member in memberGetter.Invoke(cls)) {
-						if (!member.hasMatch() && member.isMatchable()) return true;
+						if (!member.HasMatch() && member.IsMatchable()) return true;
 					}
 
 					return false;
@@ -970,8 +970,8 @@ public class Matcher {
 				.ToList();
 		if (classes.Count == 0) return [];
 
-		double maxMismatch = maxScore - ClassifierUtil.getRawScore(absThreshold * (1 - relThreshold), maxScore);
-		Dictionary<T, T> ret = new();//new ConcurrentHashDictionary<>(512);
+		double maxMismatch = maxScore - ClassifierUtil.GetRawScore(absThreshold * (1 - relThreshold), maxScore);
+		Dictionary<T, T> ret = [];//new ConcurrentHashDictionary<>(512);
 
 		// runInParallel(classes, cls => {
 		// 	int unmatched = 0;
@@ -997,12 +997,12 @@ public class Matcher {
 			int unmatched = 0;
 
 			foreach (T member in memberGetter.Invoke(cls)) {
-				if (member.hasMatch() || !member.isMatchable()) continue;
+				if (member.HasMatch() || !member.IsMatchable()) continue;
 
-				List<RankResult<T>> ranking = ranker.Invoke(member, memberGetter.Invoke(cls.getMatch()), level, env, maxMismatch);
+				List<RankResult<T>> ranking = ranker.Invoke(member, memberGetter.Invoke(cls.GetMatch()), level, env, maxMismatch);
 
-				if (ClassifierUtil.checkRank(ranking, absThreshold, relThreshold, maxScore)) {
-					T match = ranking[0].subject;
+				if (ClassifierUtil.CheckRank(ranking, absThreshold, relThreshold, maxScore)) {
+					T match = ranking[0].Subject;
 
 					ret[member] = match;
 				} else {
@@ -1015,17 +1015,17 @@ public class Matcher {
 			if (unmatched > 0) totalUnmatched += unmatched;
 		}
 
-		sanitizeMatches(ret);
+		SanitizeMatches(ret);
 
 		return ret;
 	}
 
-	public bool autoMatchMethodArgs(Action<double> progressReceiver) {
-		return autoMatchMethodArgs(autoMatchMaxLevel, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
+	public bool AutoMatchMethodArgs(Action<double> progressReceiver) {
+		return AutoMatchMethodArgs(autoMatchMaxLevel, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
 	}
 
-	public bool autoMatchMethodArgs(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
-		return autoMatchMethodVars(true, methodInstance => methodInstance.args, level, absThreshold, relThreshold, progressReceiver);
+	public bool AutoMatchMethodArgs(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
+		return AutoMatchMethodVars(true, methodInstance => methodInstance.args, level, absThreshold, relThreshold, progressReceiver);
 	}
 
 	// public bool autoMatchMethodVars(Action<double> progressReceiver) {
@@ -1036,15 +1036,15 @@ public class Matcher {
 	// 	return autoMatchMethodVars(false, MethodInstance.getVars, level, absThreshold, relThreshold, progressReceiver);
 	// }
 
-	private bool autoMatchMethodVars(bool isArg, Func<MethodInstance, MethodParamInstance[]> supplier,
+	private bool AutoMatchMethodVars(bool isArg, Func<MethodInstance, MethodParamInstance[]> supplier,
 			ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
-		List<MethodInstance> methods = env.envA.types.Values
-				.Where(cls => /*cls.isReal() &&*/ cls.hasMatch() && cls.methodsById.Count > 0)
+		List<MethodInstance> methods = env.EnvA.types.Values
+				.Where(cls => /*cls.isReal() &&*/ cls.HasMatch() && cls.methodsById.Count > 0)
 				.SelectMany(cls => cls.methodsById.Values)
-				.Where(m => m.hasMatch() && supplier.Invoke(m).Length > 0)
+				.Where(m => m.HasMatch() && supplier.Invoke(m).Length > 0)
 				.Where(m => {
 					foreach (MethodParamInstance a in supplier.Invoke(m)) {
-						if (!a.hasMatch() && a.isMatchable()) return true;
+						if (!a.HasMatch() && a.IsMatchable()) return true;
 					}
 
 					return false;
@@ -1056,9 +1056,9 @@ public class Matcher {
 		if (methods.Count == 0) {
 			matches = [];
 		} else {
-			double maxScore = MethodParamClassifier.getMaxScore(level);
-			double maxMismatch = maxScore - ClassifierUtil.getRawScore(absThreshold * (1 - relThreshold), maxScore);
-			matches = new();//new ConcurrentHashDictionary<>(512);
+			double maxScore = MethodParamClassifier.GetMaxScore(level);
+			double maxMismatch = maxScore - ClassifierUtil.GetRawScore(absThreshold * (1 - relThreshold), maxScore);
+			matches = [];//new ConcurrentHashDictionary<>(512);
 
 			// runInParallel(methods, m => {
 			// 	int unmatched = 0;
@@ -1084,12 +1084,12 @@ public class Matcher {
 				int unmatched = 0;
 
 				foreach (MethodParamInstance var in supplier.Invoke(m)) {
-					if (var.hasMatch() || !var.isMatchable()) continue;
+					if (var.HasMatch() || !var.IsMatchable()) continue;
 
-					List<RankResult<MethodParamInstance>> ranking = MethodParamClassifier.rank(var, supplier.Invoke(m.getMatch()), level, env, maxMismatch);
+					List<RankResult<MethodParamInstance>> ranking = MethodParamClassifier.Rank(var, supplier.Invoke(m.GetMatch()), level, env, maxMismatch);
 
-					if (ClassifierUtil.checkRank(ranking, absThreshold, relThreshold, maxScore)) {
-						MethodParamInstance match = ranking[0].subject;
+					if (ClassifierUtil.CheckRank(ranking, absThreshold, relThreshold, maxScore)) {
+						MethodParamInstance match = ranking[0].Subject;
 
 						matches[var] = match;
 					} else {
@@ -1102,7 +1102,7 @@ public class Matcher {
 				if (unmatched > 0) totalUnmatched += unmatched;
 			}
 
-			sanitizeMatches(matches);
+			SanitizeMatches(matches);
 		}
 
 		foreach (var entry in matches) {
@@ -1114,7 +1114,7 @@ public class Matcher {
 		return matches.Count != 0;
 	}
 
-	public static void sanitizeMatches<T>(Dictionary<T, T> matches) where T : Matchable {
+	public static void SanitizeMatches<T>(Dictionary<T, T> matches) where T : Matchable {
 		HashSet<T> matched = new(new IdentityEqualityComparer<T>());
 		HashSet<T> conflictingMatches = new(new IdentityEqualityComparer<T>());
 
@@ -1131,10 +1131,10 @@ public class Matcher {
 		}
 	}
 
-	public record MatchingStatus(int totalClassCount, int matchedClassCount, int totalMethodCount, int matchedMethodCount,
-			int totalMethodArgCount, int matchedMethodArgCount, int totalFieldCount, int matchedFieldCount) {}
+	public record MatchingStatus(int TotalClassCount, int MatchedClassCount, int TotalMethodCount, int MatchedMethodCount,
+			int TotalMethodArgCount, int MatchedMethodArgCount, int TotalFieldCount, int MatchedFieldCount) {}
 
-	public MatchingStatus getStatus(bool inputsOnly) {
+	public MatchingStatus GetStatus(bool inputsOnly) {
 		int totalClassCount = 0;
 		int matchedClassCount = 0;
 		int totalMethodCount = 0;
@@ -1146,22 +1146,22 @@ public class Matcher {
 		int totalFieldCount = 0;
 		int matchedFieldCount = 0;
 
-		foreach (TypeInstance cls in env.envA.types.Values) {
-			if (inputsOnly && cls.cecilType == null) continue;
+		foreach (TypeInstance cls in env.EnvA.types.Values) {
+			if (inputsOnly && cls.CecilType == null) continue;
 
 			totalClassCount++;
-			if (cls.hasMatch()) matchedClassCount++;
+			if (cls.HasMatch()) matchedClassCount++;
 
 			foreach (MethodInstance method in cls.methodsById.Values) {
 				// if (method.isReal()) {
 					totalMethodCount++;
 
-					if (method.hasMatch()) matchedMethodCount++;
+					if (method.HasMatch()) matchedMethodCount++;
 
 					foreach (MethodParamInstance arg in method.args) {
 						totalMethodArgCount++;
 
-						if (arg.hasMatch()) matchedMethodArgCount++;
+						if (arg.HasMatch()) matchedMethodArgCount++;
 					}
 
 					// foreach (MethodVarInstance var in method.getVars()) {
@@ -1176,7 +1176,7 @@ public class Matcher {
 				// if (field.isReal()) {
 					totalFieldCount++;
 
-					if (field.hasMatch()) matchedFieldCount++;
+					if (field.HasMatch()) matchedFieldCount++;
 				// }
 			}
 		}

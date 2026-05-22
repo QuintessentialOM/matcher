@@ -4,8 +4,8 @@ using Mono.Cecil;
 namespace Matcher.Matching;
 
 public class GenericParamInstance : MatchableMember {
-	public GenericParameter cecilGenericParam { get {
-		return (GenericParameter) cecilMemberReference;
+	public GenericParameter? CecilGenericParam { get {
+		return (GenericParameter?) CecilMemberReference;
 	} }
 	private GenericParamInstance? matchedGenericParam;
 
@@ -14,35 +14,35 @@ public class GenericParamInstance : MatchableMember {
 	}
 	
 	// TODO should probably actually care about generic constraints but that's more effort
-	public override string getId() {
-		return getName();
+	public override string GetId() {
+		return GetName();
 	}
 
-	public override bool hasPotentialMatch() {
+	public override bool HasPotentialMatch() {
 		throw new NotImplementedException();
 	}
 
-	public override bool isMatchable() {
+	public override bool IsMatchable() {
 		throw new NotImplementedException();
 	}
 
-	public override bool setMatchable(bool matchable) {
+	public override bool SetMatchable(bool matchable) {
 		throw new NotImplementedException();
 	}
 
-	public override GenericParamInstance? getMatch() {
+	public override GenericParamInstance? GetMatch() {
 		return matchedGenericParam;
 	}
 
-	public void setMatch(GenericParamInstance? genericParam) {
+	public void SetMatch(GenericParamInstance? genericParam) {
 		matchedGenericParam = genericParam;
 	}
 
-	public override Matchable getOwner() {
+	public override Matchable GetOwner() {
 		throw new NotImplementedException();
 	}
 
-	public override bool isFullyMatched(bool recursive) {
+	public override bool IsFullyMatched(bool recursive) {
 		throw new NotImplementedException();
 	}
 }

@@ -1,44 +1,42 @@
-using Matcher.Matching;
-
 namespace Matcher.Matching.Classifier;
 
 public class MethodParamClassifier {
-	public static void init() {
-		addClassifier(type, 10);
+	public static void Init() {
+		AddClassifier(type, 10);
 		// addClassifier(position, 3);
 		// addClassifier(lvIndex, 2);
 		// addClassifier(usage, 8);
 	}
 
-	public static void addClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
+	public static void AddClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
 		if (levels.Length == 0) levels = Enum.GetValues<ClassifierLevel>();
 
 		classifier.weight = weight;
 
 		foreach (ClassifierLevel level in levels) {
-			if (!classifiers.ContainsKey(level)) classifiers[level] = new();
+			if (!classifiers.ContainsKey(level)) classifiers[level] = [];
 			classifiers[level].Add(classifier);
-			maxScore[level] = getMaxScore(level) + weight;
+			maxScore[level] = GetMaxScore(level) + weight;
 		}
 	}
 
-	public static double getMaxScore(ClassifierLevel level) {
+	public static double GetMaxScore(ClassifierLevel level) {
 		return maxScore.GetValueOrDefault(level, 0);
 	}
 
-	public static List<RankResult<MethodParamInstance>> rank(MethodParamInstance src, MethodParamInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch) {
-		return ClassifierUtil.rank(src, dsts, classifiers.GetValueOrDefault(level, []), ClassifierUtil.checkPotentialEquality, env, maxMismatch);
+	public static List<RankResult<MethodParamInstance>> Rank(MethodParamInstance src, MethodParamInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch) {
+		return ClassifierUtil.Rank(src, dsts, classifiers.GetValueOrDefault(level, []), ClassifierUtil.CheckPotentialEquality, env, maxMismatch);
 	}
 
-	private static readonly Dictionary<ClassifierLevel, List<IClassifier<MethodParamInstance>>> classifiers = new();
-	private static readonly Dictionary<ClassifierLevel, double> maxScore = new();
+	private static readonly Dictionary<ClassifierLevel, List<IClassifier<MethodParamInstance>>> classifiers = [];
+	private static readonly Dictionary<ClassifierLevel, double> maxScore = [];
 
-	private static AbstractClassifier type = new AbstractClassifier("type", (MethodParamInstance argA, MethodParamInstance argB, MatchingEnv env) => {
-			return ClassifierUtil.checkPotentialEquality(argA.paramType, argB.paramType) ? 1 : 0;
+	private static readonly AbstractClassifier type = new("type", (argA, argB, env) => {
+			return ClassifierUtil.CheckPotentialEquality(argA.paramType, argB.paramType) ? 1 : 0;
 		}
 	);
 
-	// private static AbstractClassifier position = new AbstractClassifier("position", (MethodParamInstance methodA, MethodParamInstance methodB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier position = new("position", (argA, argB, env) => {
 	// 		return ClassifierUtil.classifyPosition(methodA, methodB,
 	// 				MethodParamInstance.getIndex,
 	// 				(a, idx) => (a.isArg() ? a.getMethod().getArg(idx) : a.getMethod().getVar(idx)),
@@ -46,12 +44,12 @@ public class MethodParamClassifier {
 	// 	}
 	// );
 
-	// private static AbstractClassifier lvIndex = new AbstractClassifier("lv index", (MethodParamInstance argA, MethodParamInstance argB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier lvIndex = new("lv index", (argA, argB, env) => {
 	// 		return argA.getLvIndex() == argB.getLvIndex() ? 1 : 0;
 	// 	}
 	// );
 
-	// private static AbstractClassifier usage = new AbstractClassifier("usage", (MethodParamInstance argA, MethodParamInstance argB, MatchingEnv env) => {
+	// private static readonly AbstractClassifier usage = new("usage", (argA, argB, env) => {
 	// 		int[] map = ClassifierUtil.mapInsns(argA.getMethod(), argB.getMethod());
 	// 		if (map == null) return 1;
 
@@ -95,25 +93,20 @@ public class MethodParamClassifier {
 	// 	}
 	// );
 
-	public class AbstractClassifier : IClassifier<MethodParamInstance> {
-		private readonly string name;
+	public class AbstractClassifier(string name, Func<MethodParamInstance, MethodParamInstance, MatchingEnv, double> classifierFunc) : IClassifier<MethodParamInstance> {
+		private readonly string name = name;
 		public double weight; // probably shouldn't be public but I'm lazy and csharp nested types have different visibility rules so I can't just do private
-		private Func<MethodParamInstance, MethodParamInstance, MatchingEnv, double> classifierFunc;
+		private readonly Func<MethodParamInstance, MethodParamInstance, MatchingEnv, double> classifierFunc = classifierFunc;
 
-		public AbstractClassifier(string name, Func<MethodParamInstance, MethodParamInstance, MatchingEnv, double> classifierFunc) {
-			this.name = name;
-			this.classifierFunc = classifierFunc;
-		}
-
-		public String getName() {
+		public string GetName() {
 			return name;
 		}
 
-		public double getWeight() {
+		public double GetWeight() {
 			return weight;
 		}
 
-		public double getScore(MethodParamInstance a, MethodParamInstance b, MatchingEnv env) {
+		public double GetScore(MethodParamInstance a, MethodParamInstance b, MatchingEnv env) {
 			return classifierFunc.Invoke(a, b, env);
 		}
 	}

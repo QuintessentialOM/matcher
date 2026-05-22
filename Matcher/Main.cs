@@ -8,10 +8,10 @@ namespace Matcher;
 
 public static class MatcherMain {
 	public static void Main(string[] args) {
-		TypeClassifier.init();
-		MethodClassifier.init();
-		FieldClassifier.init();
-		MethodParamClassifier.init();
+		TypeClassifier.Init();
+		MethodClassifier.Init();
+		FieldClassifier.Init();
+		MethodParamClassifier.Init();
 		var moduleA = ModuleDefinition.ReadModule("Lightning_old.exe");
 		var moduleB = ModuleDefinition.ReadModule("Lightning_ce_skew_polymers.exe");
 		var matcher = new Matcher();
@@ -19,6 +19,6 @@ public static class MatcherMain {
 				"#=qb3HWBkVlFVubfVOAwuy8rw==",
 				"#=qDID3KRmTOKqTiWqrwHq$pA==",
 				["strings_old.csv"], ["strings_ce_skew_polymers.csv"]);
-		matcher.autoMatchAll(n => Console.WriteLine(n));
+		matcher.AutoMatchAll(Console.WriteLine);
 	}
 }

@@ -5,12 +5,12 @@ namespace Matcher.Matching;
 public class LocalClassEnv {
 	// initializing a non-nullable field as null bc it gets set immediately afterwards anyway
 	private LocalClassEnv other = null!;
-	public required MatchingEnv sharedEnv { get; init; }
-	public Dictionary<string, TypeInstance> types = new();
+	public required MatchingEnv SharedEnv { get; init; }
+	public Dictionary<string, TypeInstance> types = [];
 
 	[SetsRequiredMembers]
 	public LocalClassEnv(MatchingEnv sharedEnv) {
-		this.sharedEnv = sharedEnv;
+		this.SharedEnv = sharedEnv;
 	}
 
 	// ICollection<TypeInstance> getTypes() {
@@ -29,11 +29,11 @@ public class LocalClassEnv {
 
 	// TypeInstance getLocalClsById(String id);
 
-	public TypeInstance getCreateTypeInstance(string id) {
-		return getCreateTypeInstance(id, true)!;
+	public TypeInstance GetCreateTypeInstance(string id) {
+		return GetCreateTypeInstance(id, true)!;
 	}
 
-	public TypeInstance? getCreateTypeInstance(string id, bool createUnknown) {
+	public TypeInstance? GetCreateTypeInstance(string id, bool createUnknown) {
 		if (types.ContainsKey(id)) return types[id];
 		if (!createUnknown) return null;
 		types[id] = new TypeInstance(this, id, !Matcher.NonObfuscatedPattern.IsMatch(id));
@@ -47,10 +47,10 @@ public class LocalClassEnv {
 	// TypeInstance getClsById(String id, NameType nameType);
 
 	// ClassEnvironment getGlobal();
-	public void setOther(LocalClassEnv other) {
+	public void SetOther(LocalClassEnv other) {
 		this.other = other;
 	}
-	public LocalClassEnv getOther() {
+	public LocalClassEnv GetOther() {
 		return other;
 	}
 }

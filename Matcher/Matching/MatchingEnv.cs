@@ -3,14 +3,14 @@ using System.Diagnostics.CodeAnalysis;
 namespace Matcher.Matching;
 
 public class MatchingEnv {
-	public required LocalClassEnv envA { get; init; }
-	public required LocalClassEnv envB { get; init; }
+	public required LocalClassEnv EnvA { get; init; }
+	public required LocalClassEnv EnvB { get; init; }
 
 	[SetsRequiredMembers]
 	public MatchingEnv() {
-		envA = new(this);
-		envB = new(this);
-		envA.setOther(envB);
-		envB.setOther(envA);
+		EnvA = new(this);
+		EnvB = new(this);
+		EnvA.SetOther(EnvB);
+		EnvB.SetOther(EnvA);
 	}
 }

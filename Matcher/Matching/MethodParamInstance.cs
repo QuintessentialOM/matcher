@@ -4,57 +4,57 @@ using Mono.Cecil;
 namespace Matcher.Matching;
 
 public class MethodParamInstance : Matchable {
-	public MethodInstance containingMethod { get; init; }
-	public ParameterDefinition cecilParameter { get; init; }
+	public MethodInstance ContainingMethod { get; init; }
+	public ParameterDefinition CecilParameter { get; init; }
 	private MethodParamInstance? matchedMethodParam;
 	private bool matchable = true;
 	public TypeInstance paramType;
 
 	[SetsRequiredMembers]
 	public MethodParamInstance(LocalClassEnv env, MethodInstance containingMethod, ParameterDefinition cecilParameter, bool isNameObfuscated) : base(env, isNameObfuscated) {
-		this.containingMethod = containingMethod;
-		this.cecilParameter = cecilParameter;
-		paramType = env.getCreateTypeInstance(cecilParameter.ParameterType.Name);
+		this.ContainingMethod = containingMethod;
+		this.CecilParameter = cecilParameter;
+		paramType = env.GetCreateTypeInstance(cecilParameter.ParameterType.Name);
 	}
 	
-	public override string getId() {
+	public override string GetId() {
 		throw new NotImplementedException();
 	}
 	
-	public override string getName() {
+	public override string GetName() {
 		throw new NotImplementedException();
 	}
 
-	public override bool hasPotentialMatch() {
+	public override bool HasPotentialMatch() {
 		throw new NotImplementedException();
 	}
 
-	public override bool isMatchable() {
-		return matchable && containingMethod.isMatchable();
+	public override bool IsMatchable() {
+		return matchable && ContainingMethod.IsMatchable();
 	}
 
-	public override bool setMatchable(bool matchable) {
+	public override bool SetMatchable(bool matchable) {
 		if (!matchable && matchedMethodParam != null) return false;
-		if (matchable && !containingMethod.isMatchable()) return false;
+		if (matchable && !ContainingMethod.IsMatchable()) return false;
 
 		this.matchable = matchable;
 
 		return true;
 	}
 
-	public override MethodParamInstance? getMatch() {
+	public override MethodParamInstance? GetMatch() {
 		return matchedMethodParam;
 	}
 
-	public void setMatch(MethodParamInstance? methodParam) {
+	public void SetMatch(MethodParamInstance? methodParam) {
 		matchedMethodParam = methodParam;
 	}
 
-	public override Matchable getOwner() {
+	public override Matchable GetOwner() {
 		throw new NotImplementedException();
 	}
 
-	public override bool isFullyMatched(bool recursive) {
+	public override bool IsFullyMatched(bool recursive) {
 		throw new NotImplementedException();
 	}
 }
