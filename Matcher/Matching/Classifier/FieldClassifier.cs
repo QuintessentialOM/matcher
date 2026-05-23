@@ -1,3 +1,6 @@
+using Mono.Cecil;
+using Mono.Cecil.Cil;
+
 namespace Matcher.Matching.Classifier;
 
 public class FieldClassifier {
@@ -12,8 +15,8 @@ public class FieldClassifier {
 		// addClassifier(initValue, 7);
 		// addClassifier(initStrings, 8);
 		// addClassifier(initCode, 10, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		// addClassifier(readRefsBci, 6, ClassifierLevel.Extra);
-		// addClassifier(writeRefsBci, 6, ClassifierLevel.Extra);
+		AddClassifier(readRefsBci, 6, ClassifierLevel.Extra);
+		AddClassifier(writeRefsBci, 6, ClassifierLevel.Extra);
 	}
 
 	public static void AddClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
@@ -153,119 +156,122 @@ public class FieldClassifier {
 	// 	}
 	// );
 
-	// private static readonly AbstractClassifier readRefsBci = new("read refs (bci)", (fieldA, fieldB, env) => {
-	// 		String ownerA = fieldAf.containingType.getName();
-	// 		String nameA = fieldA.getName();
-	// 		String descA = fieldA.getDesc();
-	// 		String ownerB = fieldBf.containingType.getName();
-	// 		String nameB = fieldB.getName();
-	// 		String descB = fieldB.getDesc();
+	private static readonly AbstractClassifier readRefsBci = new("read refs (bci)", (fieldA, fieldB, env) => {
+			string ownerA = fieldA.ContainingType.GetName();
+			string nameA = fieldA.GetName();
+			string descA = fieldA.fieldType.GetName();
+			string ownerB = fieldB.ContainingType.GetName();
+			string nameB = fieldB.GetName();
+			string descB = fieldB.fieldType.GetName();
 
-	// 		int matched = 0;
-	// 		int mismatched = 0;
+			int matched = 0;
+			int mismatched = 0;
 
-	// 		foreach (MethodInstance src in fieldA.getReadRefs()) {
-	// 			MethodInstance dst = src.getMatch();
+			foreach (MethodInstance src in fieldA.readRefs) {
+				MethodInstance? dst = src.GetMatch();
 
-	// 			if (dst == null || !fieldB.getReadRefs().contains(dst)) {
-	// 				mismatched++;
-	// 				continue;
-	// 			}
+				if (dst == null || !fieldB.readRefs.Contains(dst)) {
+					mismatched++;
+					continue;
+				}
 
-	// 			int[] map = ClassifierUtil.mapInsns(src, dst);
-	// 			if (map == null) continue;
+				int[]? map = ClassifierUtil.MapInsns(src, dst);
+				if (map == null) continue;
 
-	// 			InsnList ilA = src.getAsmNode().instructions;
-	// 			InsnList ilB = dst.getAsmNode().instructions;
+				var ilA = src.CecilMethod!.Body.Instructions;
+				var ilB = dst.CecilMethod!.Body.Instructions;
 
-	// 			for (int srcIdx = 0; srcIdx < map.Length; srcIdx++) {
-	// 				if (map[srcIdx] < 0) continue;
+				for (int srcIdx = 0; srcIdx < map.Length; srcIdx++) {
+					if (map[srcIdx] < 0) continue;
 
-	// 				AbstractInsnNode in_ = ilA.get(srcIdx);
-	// 				if (in_.getOpcode() != Opcodes.GETFIELD && in_.getOpcode() != Opcodes.GETSTATIC) continue;
+					var in_ = ilA[srcIdx];
+					if (in_.Operand is not FieldReference) continue;
+					// TODO field reads and field address accesses are currently treated the same. probably shouldn't do that?
+					if (in_.OpCode == OpCodes.Stfld || in_.OpCode == OpCodes.Stsfld) continue;
 
-	// 				FieldInsnNode fin = (FieldInsnNode) in_;
-	// 				if (!isSameField(fin, ownerA, nameA, descA, fieldA)) continue;
+					var fin = (FieldReference) in_.Operand;
+					if (!isSameField(fin, ownerA, nameA, descA, fieldA, env.EnvA)) continue;
 
-	// 				in_ = ilB.get(map[srcIdx]);
-	// 				fin = (FieldInsnNode) in_;
+					in_ = ilB[map[srcIdx]];
+					fin = (FieldReference) in_.Operand;
 
-	// 				if (!isSameField(fin, ownerB, nameB, descB, fieldB)) {
-	// 					mismatched++;
-	// 				} else {
-	// 					matched++;
-	// 				}
-	// 			}
-	// 		}
+					if (!isSameField(fin, ownerB, nameB, descB, fieldB, env.EnvB)) {
+						mismatched++;
+					} else {
+						matched++;
+					}
+				}
+			}
 
-	// 		if (matched == 0 && mismatched == 0) {
-	// 			return 1;
-	// 		} else {
-	// 			return (double) matched / (matched + mismatched);
-	// 		}
-	// 	}
-	// );
+			if (matched == 0 && mismatched == 0) {
+				return 1;
+			} else {
+				return (double) matched / (matched + mismatched);
+			}
+		}
+	);
 
-	// private static readonly AbstractClassifier writeRefsBci = new("write refs (bci)", (fieldA, fieldB, env) => {
-	// 		String ownerA = fieldAf.containingType.getName();
-	// 		String nameA = fieldA.getName();
-	// 		String descA = fieldA.getDesc();
-	// 		String ownerB = fieldBf.containingType.getName();
-	// 		String nameB = fieldB.getName();
-	// 		String descB = fieldB.getDesc();
+	private static readonly AbstractClassifier writeRefsBci = new("write refs (bci)", (fieldA, fieldB, env) => {
+			string ownerA = fieldA.ContainingType.GetName();
+			string nameA = fieldA.GetName();
+			string descA = fieldA.fieldType.GetName();
+			string ownerB = fieldB.ContainingType.GetName();
+			string nameB = fieldB.GetName();
+			string descB = fieldB.fieldType.GetName();
 
-	// 		int matched = 0;
-	// 		int mismatched = 0;
+			int matched = 0;
+			int mismatched = 0;
 
-	// 		foreach (MethodInstance src in fieldA.getWriteRefs()) {
-	// 			MethodInstance dst = src.getMatch();
+			foreach (MethodInstance src in fieldA.writeRefs) {
+				MethodInstance? dst = src.GetMatch();
 
-	// 			if (dst == null || !fieldB.getWriteRefs().contains(dst)) {
-	// 				mismatched++;
-	// 				continue;
-	// 			}
+				if (dst == null || !fieldB.writeRefs.Contains(dst)) {
+					mismatched++;
+					continue;
+				}
 
-	// 			int[] map = ClassifierUtil.mapInsns(src, dst);
-	// 			if (map == null) continue;
+				int[]? map = ClassifierUtil.MapInsns(src, dst);
+				if (map == null) continue;
 
-	// 			InsnList ilA = src.getAsmNode().instructions;
-	// 			InsnList ilB = dst.getAsmNode().instructions;
+				var ilA = src.CecilMethod!.Body.Instructions;
+				var ilB = dst.CecilMethod!.Body.Instructions;
 
-	// 			for (int srcIdx = 0; srcIdx < map.Length; srcIdx++) {
-	// 				if (map[srcIdx] < 0) continue;
+				for (int srcIdx = 0; srcIdx < map.Length; srcIdx++) {
+					if (map[srcIdx] < 0) continue;
 
-	// 				AbstractInsnNode in_ = ilA.get(srcIdx);
-	// 				if (in_.getOpcode() != Opcodes.PUTFIELD && in_.getOpcode() != Opcodes.PUTSTATIC) continue;
+					var in_ = ilA[srcIdx];
+					if (in_.Operand is not FieldReference) continue;
+					if (in_.OpCode != OpCodes.Stfld && in_.OpCode != OpCodes.Stsfld) continue;
 
-	// 				FieldInsnNode fin = (FieldInsnNode) in_;
-	// 				if (!isSameField(fin, ownerA, nameA, descA, fieldA)) continue;
+					var fin = (FieldReference) in_.Operand;
+					if (!isSameField(fin, ownerA, nameA, descA, fieldA, env.EnvA)) continue;
 
-	// 				in_ = ilB.get(map[srcIdx]);
-	// 				fin = (FieldInsnNode) in_;
+					in_ = ilB[map[srcIdx]];
+					fin = (FieldReference) in_.Operand;
 
-	// 				if (!isSameField(fin, ownerB, nameB, descB, fieldB)) {
-	// 					mismatched++;
-	// 				} else {
-	// 					matched++;
-	// 				}
-	// 			}
-	// 		}
+					if (!isSameField(fin, ownerB, nameB, descB, fieldB, env.EnvB)) {
+						mismatched++;
+					} else {
+						matched++;
+					}
+				}
+			}
 
-	// 		if (matched == 0 && mismatched == 0) {
-	// 			return 1;
-	// 		} else {
-	// 			return (double) matched / (matched + mismatched);
-	// 		}
-	// 	}
-	// );
+			if (matched == 0 && mismatched == 0) {
+				return 1;
+			} else {
+				return (double) matched / (matched + mismatched);
+			}
+		}
+	);
 
-	// private static bool isSameField(FieldInsnNode fin, String owner, String name, String desc, FieldInstance field) {
-	// 	ClassInstance target;
+	private static bool isSameField(FieldReference fin, string owner, string name, string desc, FieldInstance field, LocalClassEnv env) {
+		TypeInstance? target;
 
-	// 	return fin.name.equals(name)
-	// 			&& fin.desc.equals(desc)
-	// 			&& (fin.owner.equals(owner) || (target = field.getEnv().getClsByName(fin.owner)) != null && target.resolveField(name, desc) == field);
-	// }
+		return fin.Name == name
+				&& fin.FieldType.Name == desc
+				&& (fin.DeclaringType.Name == owner || (target = env.types!.GetValueOrDefault(fin.DeclaringType.Name, null)) != null && target.GetField(name, desc) == field);
+	}
 
 	private static bool CheckAsmNodes(FieldInstance a, FieldInstance b) {
 		return a.CecilField != null && b.CecilField != null;

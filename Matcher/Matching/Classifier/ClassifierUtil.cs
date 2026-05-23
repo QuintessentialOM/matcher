@@ -515,12 +515,20 @@ public class ClassifierUtil {
 		var ilB = b.CecilMethod?.Body?.Instructions;
 		if (ilA == null || ilB == null) return null;
 
-		// if (ilA.Count * ilB.Count < 1000) {
+		if (ilA.Count * ilB.Count < 1000) {
 			return MapInsns(ilA, ilB, a, b, a.Env.SharedEnv);
-		// } else {
-		// 	return a.env.sharedEnv.getCache().compute(ilMapCacheToken, a, b, (mA, mB) => mapInsns(mA.getAsmNode().instructions, mB.getAsmNode().instructions, mA, mB, mA.env.sharedEnv));
-		// }
+		} else {
+			if (mapInsnsCache.ContainsKey((a, b))) {
+				return mapInsnsCache[(a, b)];
+			} else {
+				var result = MapInsns(ilA, ilB, a, b, a.Env.SharedEnv);
+				mapInsnsCache[(a, b)] = result;
+				return result;
+			}
+		}
 	}
+
+	private static readonly Dictionary<(MethodInstance, MethodInstance), int[]?> mapInsnsCache = [];
 
 	public static int[] MapInsns(Collection<Instruction> listA, Collection<Instruction> listB, MethodInstance mthA, MethodInstance mthB, MatchingEnv env) {
 		return MapLists(listA, listB, (list, ind) => list[ind], list => list.Count, (inA, inB) => CompareInsns(inA, inB, listA, listB, (list, item) => list.IndexOf(item), mthA, mthB, env));

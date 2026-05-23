@@ -1,5 +1,5 @@
 using System.Linq;
-using Matcher.Matching;
+using Mono.Cecil;
 
 namespace Matcher.Matching.Classifier;
 
@@ -21,7 +21,7 @@ public class MethodClassifier {
 		AddClassifier(fieldWrites, 5);
 		AddClassifier(position, 3);
 		AddClassifier(code, 12, ClassifierLevel.Full, ClassifierLevel.Extra);
-		// addClassifier(inRefsBci, 6, ClassifierLevel.Extra);
+		AddClassifier(inRefsBci, 6, ClassifierLevel.Extra);
 	}
 
 	public static void AddClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
@@ -222,90 +222,91 @@ public class MethodClassifier {
 		}
 	);
 
-	// private static readonly AbstractClassifier inRefsBci = new("in refs (bci)", (methodA, methodB, env) => {
-	// 		String ownerA = methodA.getCls().getName();
-	// 		String nameA = methodA.getName();
-	// 		String descA = methodA.getDesc();
-	// 		String ownerB = methodB.getCls().getName();
-	// 		String nameB = methodB.getName();
-	// 		String descB = methodB.getDesc();
+	private static readonly AbstractClassifier inRefsBci = new("in refs (bci)", (methodA, methodB, env) => {
+			string ownerA = methodA.ContainingType.GetName();
+			string nameA = methodA.GetName();
+			// TODO descs
+			// string descA = methodA.GetDesc();
+			string ownerB = methodB.ContainingType.GetName();
+			string nameB = methodB.GetName();
+			// string descB = methodB.GetDesc();
 
-	// 		int matched = 0;
-	// 		int mismatched = 0;
+			int matched = 0;
+			int mismatched = 0;
 
-	// 		foreach (MethodInstance src in methodA.getRefsIn()) {
-	// 			if (src == methodA) continue;
+			foreach (MethodInstance src in methodA.refsIn) {
+				if (src == methodA) continue;
 
-	// 			MethodInstance dst = src.getMatch();
+				MethodInstance? dst = src.GetMatch();
 
-	// 			if (dst == null || !methodB.getRefsIn().contains(dst)) {
-	// 				mismatched++;
-	// 				continue;
-	// 			}
+				if (dst == null || !methodB.refsIn.Contains(dst)) {
+					mismatched++;
+					continue;
+				}
 
-	// 			int[]? map = ClassifierUtil.mapInsns(src, dst!);
-	// 			if (map == null) continue;
+				int[]? map = ClassifierUtil.MapInsns(src, dst!);
+				if (map == null) continue;
 
-	// 			InsnList ilA = src.getAsmNode().instructions;
-	// 			InsnList ilB = dst!.getAsmNode().instructions;
+				var ilA = src.CecilMethod!.Body.Instructions;
+				var ilB = dst.CecilMethod!.Body.Instructions;
 
-	// 			for (int srcIdx = 0; srcIdx < mapdsts.Length; srcIdx++) {
-	// 				if (map[srcIdx] < 0) continue;
+				for (int srcIdx = 0; srcIdx < map.Length; srcIdx++) {
+					if (map[srcIdx] < 0) continue;
 
-	// 				AbstractInsnNode in = ilA.get(srcIdx);
-	// 				int type = in.getType();
-	// 				if (type != AbstractInsnNode.METHOD_INSN && type != AbstractInsnNode.INVOKE_DYNAMIC_INSN) continue;
+					var in_ = ilA[srcIdx];
+					if (in_.Operand is not MethodReference) continue;
 
-	// 				if (!isSameMethod(in, ownerA, nameA, descA, methodA)) continue;
+					if (!isSameMethod((MethodReference) in_.Operand, ownerA, nameA, /*descA*/ null, methodA, env.EnvA)) continue;
 
-	// 				in = ilB.get(map[srcIdx]);
+					in_ = ilB[map[srcIdx]];
+					if (in_.Operand is not MethodReference) continue;
 
-	// 				if (!isSameMethod(in, ownerB, nameB, descB, methodB)) {
-	// 					mismatched++;
-	// 				} else {
-	// 					matched++;
-	// 				}
-	// 			}
-	// 		}
+					if (!isSameMethod((MethodReference) in_.Operand, ownerB, nameB, /*descB*/ null, methodB, env.EnvB)) {
+						mismatched++;
+					} else {
+						matched++;
+					}
+				}
+			}
 
-	// 		if (matched == 0 && mismatched == 0) {
-	// 			return 1;
-	// 		} else {
-	// 			return (double) matched / (matched + mismatched);
-	// 		}
-	// 	}
-	// );
+			if (matched == 0 && mismatched == 0) {
+				return 1;
+			} else {
+				return (double) matched / (matched + mismatched);
+			}
+		}
+	);
 
-	// private static bool isSameMethod(AbstractInsnNode in_, String owner, String name, String desc, MethodInstance method) {
-	// 	String sOwner, sName, sDesc;
-	// 	bool sItf;
+	private static bool isSameMethod(MethodReference in_, string owner, string name, string desc, MethodInstance method, LocalClassEnv env) {
+		// string sOwner, sName, sDesc;
+		// bool sItf;
 
-	// 	if (in_.getType() == AbstractInsnNode.METHOD_INSN) {
-	// 		MethodInsnNode min = (MethodInsnNode) in_;
-	// 		sOwner = min.owner;
-	// 		sName = min.name;
-	// 		sDesc = min.desc;
-	// 		sItf = min.itf;
-	// 	} else {
-	// 		InvokeDynamicInsnNode din = (InvokeDynamicInsnNode) in_;
-	// 		Handle impl = Util.getTargetHandle(din.bsm, din.bsmArgs);
-	// 		if (impl == null) return false;
+		// if (in_.getType() == AbstractInsnNode.METHOD_INSN) {
+		// 	MethodInsnNode min = (MethodInsnNode) in_;
+		// 	sOwner = min.owner;
+		// 	sName = min.name;
+		// 	sDesc = min.desc;
+		// 	sItf = min.itf;
+		// } else {
+		// 	InvokeDynamicInsnNode din = (InvokeDynamicInsnNode) in_;
+		// 	Handle impl = Util.getTargetHandle(din.bsm, din.bsmArgs);
+		// 	if (impl == null) return false;
 
-	// 		int tag = impl.getTag();
-	// 		if (tag < Opcodes.H_INVOKEVIRTUAL || tag > Opcodes.H_INVOKEINTERFACE) return false;
+		// 	int tag = impl.getTag();
+		// 	if (tag < Opcodes.H_INVOKEVIRTUAL || tag > Opcodes.H_INVOKEINTERFACE) return false;
 
-	// 		sOwner = impl.getOwner();
-	// 		sName = impl.getName();
-	// 		sDesc = impl.getDesc();
-	// 		sItf = Util.isCallToInterface(impl);
-	// 	}
+		// 	sOwner = impl.getOwner();
+		// 	sName = impl.getName();
+		// 	sDesc = impl.getDesc();
+		// 	sItf = Util.isCallToInterface(impl);
+		// }
 
-	// 	TypeInstance target;
+		TypeInstance? target;
 
-	// 	return sName.equals(name)
-	// 			&& sDesc.equals(desc)
-	// 			&& (sOwner.equals(owner) || (target = method.getEnv().getClsByName(sOwner)) != null && target.resolveMethod(name, desc, sItf) == method);
-	// }
+		return in_.Name == name
+				// && sDesc.equals(desc)
+				&& (in_.DeclaringType.Name == owner || (target = env.types!.GetValueOrDefault(in_.DeclaringType.Name, null)) != null && target.GetMethod(name, desc) == method);
+	}
 
 	private static bool CheckAsmNodes(MethodInstance a, MethodInstance b) {
 		return a.CecilMethod != null && b.CecilMethod != null;

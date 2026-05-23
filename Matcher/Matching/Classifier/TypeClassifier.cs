@@ -26,7 +26,7 @@ public class TypeClassifier {
 		AddClassifier(fieldReadReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		AddClassifier(fieldWriteReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		AddClassifier(membersFull, 10, ClassifierLevel.Full, ClassifierLevel.Extra);
-		// addClassifier(inRefsBci, 6, ClassifierLevel.Extra);
+		AddClassifier(inRefsBci, 6, ClassifierLevel.Extra);
 	}
 
 	public static void AddClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
@@ -343,14 +343,14 @@ public class TypeClassifier {
 	);
 
 	private static readonly AbstractClassifier numericConstants = new("numeric constants", (clsA, clsB, env) => {
-			HashSet<int> intsA = new();
-			HashSet<int> intsB = new();
-			HashSet<long> longsA = new();
-			HashSet<long> longsB = new();
-			HashSet<float> floatsA = new();
-			HashSet<float> floatsB = new();
-			HashSet<double> doublesA = new();
-			HashSet<double> doublesB = new();
+			HashSet<int> intsA = [];
+			HashSet<int> intsB = [];
+			HashSet<long> longsA = [];
+			HashSet<long> longsB = [];
+			HashSet<float> floatsA = [];
+			HashSet<float> floatsB = [];
+			HashSet<double> doublesA = [];
+			HashSet<double> doublesB = [];
 
 			ExtractNumbers(clsA, intsA, longsA, floatsA, doublesA);
 			ExtractNumbers(clsB, intsB, longsB, floatsB, doublesB);
@@ -403,56 +403,57 @@ public class TypeClassifier {
 		}
 	);
 
-	// private static readonly AbstractClassifier inRefsBci = new("in refs (bci)", (clsA, clsB, env) => {
-	// 		int matched = 0;
-	// 		int mismatched = 0;
+	private static readonly AbstractClassifier inRefsBci = new("in refs (bci)", (clsA, clsB, env) => {
+			int matched = 0;
+			int mismatched = 0;
 
-	// 		foreach (MethodInstance src in clsA.getMethodTypeRefs()) {
-	// 			if (src.getCls() == clsA) continue;
+			foreach (MethodInstance src in clsA.methodTypeRefs) {
+				if (src.ContainingType == clsA) continue;
 
-	// 			MethodInstance? dst = src.getMatch();
+				MethodInstance? dst = src.GetMatch();
 
-	// 			if (dst == null || !clsB.getMethodTypeRefs().contains(dst)) {
-	// 				mismatched++;
-	// 				continue;
-	// 			}
+				if (dst == null || !clsB.methodTypeRefs.Contains(dst)) {
+					mismatched++;
+					continue;
+				}
 
-	// 			int[]? map = ClassifierUtil.mapInsns(src, dst!);
-	// 			if (map == null) continue;
+				int[]? map = ClassifierUtil.MapInsns(src, dst!);
+				if (map == null) continue;
 
-	// 			InsnList ilA = src.getAsmNode().instructions;
-	// 			InsnList ilB = dst!.getAsmNode().instructions;
+				var ilA = src.CecilMethod!.Body.Instructions;
+				var ilB = dst.CecilMethod!.Body.Instructions;
 
-	// 			for (int srcIdx = 0; srcIdx < map.Length; srcIdx++) {
-	// 				if (map[srcIdx] < 0) continue;
+				for (int srcIdx = 0; srcIdx < map.Length; srcIdx++) {
+					if (map[srcIdx] < 0) continue;
 
-	// 				AbstractInsnNode in_ = ilA.get(srcIdx);
-	// 				if (in_.getType() != AbstractInsnNode.METHOD_INSN) continue;
+					var in_ = ilA[srcIdx];
+					if (in_.Operand is not MethodReference) continue;
 
-	// 				MethodInsnNode min = (MethodInsnNode) in_;
-	// 				TypeInstance owner = env.getClsByNameA(min.owner);
+					MethodReference min = (MethodReference) in_.Operand;
+					TypeInstance? owner = env.EnvA.types!.GetValueOrDefault(min.DeclaringType.Name, null);
 
-	// 				if (owner != clsA) continue;
+					if (owner != clsA) continue;
 
-	// 				in_ = ilB.get(map[srcIdx]);
-	// 				min = (MethodInsnNode) in_;
-	// 				owner = env.getClsByNameB(min.owner);
+					in_ = ilB[map[srcIdx]];
+					if (in_.Operand is not MethodReference) continue; // shouldn't happen I think?
+					min = (MethodReference) in_.Operand;
+					owner = env.EnvB.types!.GetValueOrDefault(min.DeclaringType.Name, null);
 
-	// 				if (owner != clsB) {
-	// 					mismatched++;
-	// 				} else {
-	// 					matched++;
-	// 				}
-	// 			}
-	// 		}
+					if (owner != clsB) {
+						mismatched++;
+					} else {
+						matched++;
+					}
+				}
+			}
 
-	// 		if (matched == 0 && mismatched == 0) {
-	// 			return 1;
-	// 		} else {
-	// 			return (double) matched / (matched + mismatched);
-	// 		}
-	// 	}
-	// );
+			if (matched == 0 && mismatched == 0) {
+				return 1;
+			} else {
+				return (double) matched / (matched + mismatched);
+			}
+		}
+	);
 
 	private static void ExtractNumbers(TypeInstance cls, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
 		foreach (MethodInstance method in cls.methodsById.Values) {
