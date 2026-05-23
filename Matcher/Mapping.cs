@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Matcher;
 
 public class Mappings {
@@ -17,13 +15,13 @@ public class ClassMapping {
 }
 
 public class FieldMapping {
-	public required string FieldTypeA;
+	// public required string FieldTypeA;
 	public required string FieldNameA;
 	public string? FieldNameB;
 }
 
 public class MethodMapping {
-	public required string ReturnTypeA;
+	// public required string ReturnTypeA;
 	public required string MethodNameA;
 	public string? MethodNameB;
 	public List<MethodParameterMapping> Parameters = [];
