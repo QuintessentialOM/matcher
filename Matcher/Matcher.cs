@@ -803,6 +803,9 @@ public class Matcher {
 	private const double relMethodVarAutoMatchThreshold = 0.075;
 	public const bool assumeBothOrNoneObfuscated = true; // <-- I *think* it's safe to assume this?
 
+	private const double minAbsMatchThreshold = 0.6;
+	private const double minRelMatchThreshold = 0.04;
+
 
 	public void AutoMatchAll(Action<double> progressReceiver) {
 		Console.WriteLine($"initial {GetStatus(true)}");
@@ -818,6 +821,31 @@ public class Matcher {
 		Console.WriteLine($"full {GetStatus(true)}");
 		AutoMatchLevel(ClassifierLevel.Extra, progressReceiver);
 		Console.WriteLine($"extra {GetStatus(true)}");
+
+		var level = ClassifierLevel.Extra;
+		var absThreshold = absClassAutoMatchThreshold;
+		var relThreshold = relClassAutoMatchThreshold;
+		bool matchedAny;
+
+		while (true) {
+			matchedAny = AutoMatchMethods(level, absThreshold, relThreshold, progressReceiver);
+			matchedAny |= AutoMatchFields(level, absThreshold, relThreshold, progressReceiver);
+			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Normal);
+			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Enum);
+			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Delegate);
+			if (matchedAny) {
+				Console.WriteLine($"bruteforce {GetStatus(true)}");
+				absThreshold = absClassAutoMatchThreshold;
+				relThreshold = relClassAutoMatchThreshold;
+			} else {
+				if (absThreshold == minAbsMatchThreshold && relThreshold == minRelMatchThreshold) {
+					break;
+				} else {
+					absThreshold = Math.Max(minAbsMatchThreshold, absThreshold * 0.9);
+					relThreshold = Math.Max(minRelMatchThreshold, relThreshold * 0.9);
+				}
+			}
+		}
 
 		// bool matchedAny;
 
