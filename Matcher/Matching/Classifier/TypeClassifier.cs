@@ -33,12 +33,10 @@ public class TypeClassifier {
 		AddClassifier(outerClass, 6, TypeSubgroup.Enum);
 		AddClassifier(position, 3, TypeSubgroup.Enum);
 		AddClassifier(fieldCount, 3, TypeSubgroup.Enum);
-		AddClassifier(hierarchySiblings, 2, TypeSubgroup.Enum);
-		AddClassifier(outReferences, 6, TypeSubgroup.Enum);
 		AddClassifier(inReferences, 6, TypeSubgroup.Enum);
-		AddClassifier(numericConstants, 6, TypeSubgroup.Enum);
-		AddClassifier(membersFull, 10, TypeSubgroup.Enum, ClassifierLevel.Full, ClassifierLevel.Extra);
-		AddClassifier(inRefsBci, 6, TypeSubgroup.Enum, ClassifierLevel.Extra);
+		AddClassifier(inReferencesByMethod, 5, TypeSubgroup.Enum, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(inReferencesByField, 3, TypeSubgroup.Enum, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(membersFull, 6, TypeSubgroup.Enum, ClassifierLevel.Full, ClassifierLevel.Extra);
 		// Delegate subgroup
 		AddClassifier(outerClass, 6, TypeSubgroup.Delegate);
 		// AddClassifier(position, 3, TypeSubgroup.Delegate);
@@ -300,6 +298,16 @@ public class TypeClassifier {
 
 		return ret;
 	}
+
+	private static readonly AbstractClassifier inReferencesByMethod = new("in references by method", (clsA, clsB, env) => {
+			return ClassifierUtil.CompareMethodSets(clsA.methodTypeRefs, clsB.methodTypeRefs, true);
+		}
+	);
+
+	private static readonly AbstractClassifier inReferencesByField = new("in references by field", (clsA, clsB, env) => {
+			return ClassifierUtil.CompareFieldSets(clsA.fieldTypeRefs, clsB.fieldTypeRefs, true);
+		}
+	);
 
 	private static readonly AbstractClassifier methodOutReferences = new("method out references", (clsA, clsB, env) => {
 			HashSet<MethodInstance> refsA = getMethodOutRefs(clsA);
