@@ -12,7 +12,7 @@ public class FieldClassifier {
 		AddClassifier(readReferences, 6);
 		AddClassifier(writeReferences, 6);
 		AddClassifier(position, 3);
-		// addClassifier(initValue, 7);
+		AddClassifier(initValue, 3);
 		// addClassifier(initStrings, 8);
 		// addClassifier(initCode, 10, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		AddClassifier(readRefsBci, 6, ClassifierLevel.Extra);
@@ -73,9 +73,11 @@ public class FieldClassifier {
 
 			if (!hasSameAccess) diff += 1;
 
-			// TODO field flags other than access
+			if (fieldA.CecilField.IsLiteral != fieldB.CecilField.IsLiteral) diff += 1;
+			if (fieldA.CecilField.IsInitOnly != fieldB.CecilField.IsInitOnly) diff += 1;
+			if (fieldA.CecilField.HasConstant != fieldB.CecilField.HasConstant) diff += 1;
 
-			return 1 - diff;
+			return 1 - diff / 4.0;
 		}
 	);
 
@@ -116,18 +118,18 @@ public class FieldClassifier {
 		}
 	);
 
-	// private static readonly AbstractClassifier initValue = new("init value", (fieldA, fieldB, env) => {
-	// 		if (!checkAsmNodes(fieldA, fieldB)) return compareAsmNodes(fieldA, fieldB);
+	private static readonly AbstractClassifier initValue = new("init value", (fieldA, fieldB, env) => {
+			if (!CheckAsmNodes(fieldA, fieldB)) return CompareAsmNodes(fieldA, fieldB);
 
-	// 		Object valA = fieldA.getAsmNode().value;
-	// 		Object valB = fieldB.getAsmNode().value;
+			object valA = fieldA.CecilField!.Constant;
+			object valB = fieldB.CecilField!.Constant;
 
-	// 		if (valA == null && valB == null) return 1;
-	// 		if (valA == null || valB == null) return 0;
+			if (valA == null && valB == null) return 1;
+			if (valA == null || valB == null) return 0;
 
-	// 		return valA.equals(valB) ? 1 : 0;
-	// 	}
-	// );
+			return valA == valB ? 1 : 0;
+		}
+	);
 
 	// private static readonly AbstractClassifier initStrings = new("init strings", (fieldA, fieldB, env) => {
 	// 		List<AbstractInsnNode> initA = fieldA.getInitializer();
@@ -190,12 +192,12 @@ public class FieldClassifier {
 					if (in_.OpCode == OpCodes.Stfld || in_.OpCode == OpCodes.Stsfld) continue;
 
 					var fin = (FieldReference) in_.Operand;
-					if (!isSameField(fin, ownerA, nameA, descA, fieldA, env.EnvA)) continue;
+					if (!IsSameField(fin, ownerA, nameA, descA, fieldA, env.EnvA)) continue;
 
 					in_ = ilB[map[srcIdx]];
 					fin = (FieldReference) in_.Operand;
 
-					if (!isSameField(fin, ownerB, nameB, descB, fieldB, env.EnvB)) {
+					if (!IsSameField(fin, ownerB, nameB, descB, fieldB, env.EnvB)) {
 						mismatched++;
 					} else {
 						matched++;
@@ -244,12 +246,12 @@ public class FieldClassifier {
 					if (in_.OpCode != OpCodes.Stfld && in_.OpCode != OpCodes.Stsfld) continue;
 
 					var fin = (FieldReference) in_.Operand;
-					if (!isSameField(fin, ownerA, nameA, descA, fieldA, env.EnvA)) continue;
+					if (!IsSameField(fin, ownerA, nameA, descA, fieldA, env.EnvA)) continue;
 
 					in_ = ilB[map[srcIdx]];
 					fin = (FieldReference) in_.Operand;
 
-					if (!isSameField(fin, ownerB, nameB, descB, fieldB, env.EnvB)) {
+					if (!IsSameField(fin, ownerB, nameB, descB, fieldB, env.EnvB)) {
 						mismatched++;
 					} else {
 						matched++;
@@ -265,7 +267,7 @@ public class FieldClassifier {
 		}
 	);
 
-	private static bool isSameField(FieldReference fin, string owner, string name, string desc, FieldInstance field, LocalClassEnv env) {
+	private static bool IsSameField(FieldReference fin, string owner, string name, string desc, FieldInstance field, LocalClassEnv env) {
 		TypeInstance? target;
 
 		return fin.Name == name

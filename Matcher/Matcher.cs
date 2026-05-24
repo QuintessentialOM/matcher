@@ -785,17 +785,17 @@ public class Matcher {
 	private static readonly ClassifierLevel autoMatchMaxLevel = ClassifierLevel.Extra;
 
 
-	private const double absClassAutoMatchThreshold = 0.85;
-	private const double relClassAutoMatchThreshold = 0.085;
-	private const double absMethodAutoMatchThreshold = 0.85;
-	private const double relMethodAutoMatchThreshold = 0.085;
-	private const double absFieldAutoMatchThreshold = 0.85;
-	private const double relFieldAutoMatchThreshold = 0.085;
-	private const double absMethodArgAutoMatchThreshold = 0.85;
-	private const double relMethodArgAutoMatchThreshold = 0.085;
-	private const double absMethodVarAutoMatchThreshold = 0.85;
-	private const double relMethodVarAutoMatchThreshold = 0.085;
-	public const bool assumeBothOrNoneObfuscated = false;
+	private const double absClassAutoMatchThreshold = 0.8;
+	private const double relClassAutoMatchThreshold = 0.075;
+	private const double absMethodAutoMatchThreshold = 0.8;
+	private const double relMethodAutoMatchThreshold = 0.075;
+	private const double absFieldAutoMatchThreshold = 0.8;
+	private const double relFieldAutoMatchThreshold = 0.075;
+	private const double absMethodArgAutoMatchThreshold = 0.8;
+	private const double relMethodArgAutoMatchThreshold = 0.075;
+	private const double absMethodVarAutoMatchThreshold = 0.8;
+	private const double relMethodVarAutoMatchThreshold = 0.075;
+	public const bool assumeBothOrNoneObfuscated = true; // <-- I *think* it's safe to assume this?
 
 
 	public void AutoMatchAll(Action<double> progressReceiver) {

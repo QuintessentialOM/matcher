@@ -30,7 +30,7 @@ public class MethodClassifier {
 		classifier.weight = weight;
 
 		foreach (ClassifierLevel level in levels) {
-			if (!classifiers.ContainsKey(level)) classifiers[level] = new();
+			if (!classifiers.ContainsKey(level)) classifiers[level] = [];
 			classifiers[level].Add(classifier);
 			maxScore[level] = GetMaxScore(level) + weight;
 		}
@@ -161,14 +161,14 @@ public class MethodClassifier {
 	private static readonly AbstractClassifier numericConstants = new("numeric constants", (methodA, methodB, env) => {
 			if (!CheckAsmNodes(methodA, methodB)) return CompareAsmNodes(methodA, methodB);
 
-			HashSet<int> intsA = new();
-			HashSet<int> intsB = new();
-			HashSet<long> longsA = new();
-			HashSet<long> longsB = new();
-			HashSet<float> floatsA = new();
-			HashSet<float> floatsB = new();
-			HashSet<double> doublesA = new();
-			HashSet<double> doublesB = new();
+			HashSet<int> intsA = [];
+			HashSet<int> intsB = [];
+			HashSet<long> longsA = [];
+			HashSet<long> longsB = [];
+			HashSet<float> floatsA = [];
+			HashSet<float> floatsB = [];
+			HashSet<double> doublesA = [];
+			HashSet<double> doublesB = [];
 
 			ClassifierUtil.ExtractNumbers(methodA.CecilMethod, intsA, longsA, floatsA, doublesA);
 			ClassifierUtil.ExtractNumbers(methodB.CecilMethod, intsB, longsB, floatsB, doublesB);
@@ -256,12 +256,12 @@ public class MethodClassifier {
 					var in_ = ilA[srcIdx];
 					if (in_.Operand is not MethodReference) continue;
 
-					if (!isSameMethod((MethodReference) in_.Operand, ownerA, nameA, /*descA*/ null, methodA, env.EnvA)) continue;
+					if (!IsSameMethod((MethodReference) in_.Operand, ownerA, nameA, /*descA*/ null, methodA, env.EnvA)) continue;
 
 					in_ = ilB[map[srcIdx]];
 					if (in_.Operand is not MethodReference) continue;
 
-					if (!isSameMethod((MethodReference) in_.Operand, ownerB, nameB, /*descB*/ null, methodB, env.EnvB)) {
+					if (!IsSameMethod((MethodReference) in_.Operand, ownerB, nameB, /*descB*/ null, methodB, env.EnvB)) {
 						mismatched++;
 					} else {
 						matched++;
@@ -277,7 +277,7 @@ public class MethodClassifier {
 		}
 	);
 
-	private static bool isSameMethod(MethodReference in_, string owner, string name, string desc, MethodInstance method, LocalClassEnv env) {
+	private static bool IsSameMethod(MethodReference in_, string owner, string name, string desc, MethodInstance method, LocalClassEnv env) {
 		// string sOwner, sName, sDesc;
 		// bool sItf;
 

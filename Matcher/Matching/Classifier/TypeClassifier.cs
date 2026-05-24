@@ -70,9 +70,10 @@ public class TypeClassifier {
 			diff += clsA.CecilType.IsInterface != clsB.CecilType.IsInterface ? 1 : 0;
 			diff += clsA.CecilType.IsAbstract != clsB.CecilType.IsAbstract ? 1 : 0;
 			diff += clsA.CecilType.IsEnum != clsB.CecilType.IsEnum ? 1 : 0;
+			diff += clsA.CecilType.IsValueType != clsB.CecilType.IsValueType ? 1 : 0;
 			diff += clsA.CecilType.IsSealed != clsB.CecilType.IsSealed ? 1 : 0; // TODO maybe this one should be weighted less?
 
-			return 1 - diff / 5.0;
+			return 1 - diff / 6.0;
 		}
 	);
 
