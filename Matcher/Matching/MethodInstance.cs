@@ -29,9 +29,14 @@ public class MethodInstance : MatchableMember {
 		for (int i = 0; i < cecilMethod.Parameters.Count; i++) {
 			var param = cecilMethod.Parameters[i];
 			args[i] = new MethodParamInstance(env, this, param, !Matcher.NonObfuscatedPattern.IsMatch(param.Name));
+			var argType = args[i].paramType;
+			typeRefs.Add(argType);
+			argType.methodTypeRefs.Add(this);
 		}
 		this.args = args;
 		returnType = env.GetCreateTypeInstance(cecilMethod.ReturnType.Name);
+		typeRefs.Add(returnType);
+		returnType.methodTypeRefs.Add(this);
 	}
 
 	public override string GetId() {
