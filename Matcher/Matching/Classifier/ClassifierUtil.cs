@@ -10,8 +10,9 @@ public class ClassifierUtil {
 		if (a.GetMatch() != null) return a.GetMatch() == b;
 		if (b.GetMatch() != null) return b.GetMatch() == a;
 		if (!a.IsMatchable() || !b.IsMatchable()) return false;
-		// if (a.isArray() != b.isArray()) return false;
-		// if (a.isArray() && !checkPotentialEquality(a.getElementClass(), b.getElementClass())) return false;
+		if (a.IsArray() != b.IsArray()) return false;
+		if (a.IsArray() && !CheckPotentialEquality(a.elementType!, b.elementType!)) return false;
+		if (a.GetSubgroup() != b.GetSubgroup()) return false;
 		if (!CheckNameObfMatch(a, b)) return false;
 
 		return true;

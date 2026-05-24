@@ -37,6 +37,9 @@ public class TypeInstance : MatchableMemberOrClass {
 	public readonly HashSet<MethodInstance> methodTypeRefs = [];
 	public readonly HashSet<FieldInstance> fieldTypeRefs = [];
 
+	// position of nested types within their outer type. unused on non-nested types, indicated by -1
+	public int position = -1;
+
 	[SetsRequiredMembers]
 	public TypeInstance(LocalClassEnv env, TypeDefinition cecilType, bool isNameObfuscated) : this(env, cecilType, cecilType.Name, isNameObfuscated) {
 	}
@@ -112,6 +115,13 @@ public class TypeInstance : MatchableMemberOrClass {
 		if (elementType == null) return 0;
 
 		return ArrayPattern.Count(GetName());
+	}
+
+	public TypeSubgroup GetSubgroup() {
+		if (CecilType == null) return TypeSubgroup.Normal; // TODO is this valid? maybe not? idk?
+		if (CecilType.IsEnum) return TypeSubgroup.Enum;
+		if (CecilType.BaseType?.FullName?.Equals("System.MulticastDelegate") ?? false) return TypeSubgroup.Delegate;
+		return TypeSubgroup.Normal;
 	}
 
 	public MethodInstance? GetMethod(string name, string? desc) {

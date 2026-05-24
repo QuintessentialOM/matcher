@@ -4,57 +4,85 @@ namespace Matcher.Matching.Classifier;
 
 public class TypeClassifier {
 	public static void Init() {
-		AddClassifier(classTypeCheck, 20);
-		// addClassifier(signature, 5); // <- this one seems to be generic params, and also compares superclass + interface signatures
-		AddClassifier(hierarchyDepth, 1);
-		AddClassifier(parentClass, 4);
-		AddClassifier(childClasses, 3);
-		AddClassifier(interfaces, 3);
-		AddClassifier(implementers, 2);
-		AddClassifier(outerClass, 6);
-		AddClassifier(innerClasses, 5);
-		AddClassifier(methodCount, 3);
-		AddClassifier(fieldCount, 3);
-		AddClassifier(hierarchySiblings, 2);
-		AddClassifier(similarMethods, 10);
-		AddClassifier(outReferences, 6);
-		AddClassifier(inReferences, 6);
-		AddClassifier(stringConstants, 8);
-		AddClassifier(numericConstants, 6);
-		AddClassifier(methodOutReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		AddClassifier(methodInReferences, 6, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		AddClassifier(fieldReadReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		AddClassifier(fieldWriteReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		AddClassifier(membersFull, 10, ClassifierLevel.Full, ClassifierLevel.Extra);
-		AddClassifier(inRefsBci, 6, ClassifierLevel.Extra);
+		// Normal subgroup
+		AddClassifier(classTypeCheck, 20, TypeSubgroup.Normal);
+		// AddClassifier(signature, 5); // <- this one seems to be generic params, and also compares superclass + interface signatures
+		AddClassifier(hierarchyDepth, 1, TypeSubgroup.Normal);
+		AddClassifier(parentClass, 4, TypeSubgroup.Normal);
+		AddClassifier(childClasses, 3, TypeSubgroup.Normal);
+		AddClassifier(interfaces, 3, TypeSubgroup.Normal);
+		AddClassifier(implementers, 2, TypeSubgroup.Normal);
+		AddClassifier(outerClass, 6, TypeSubgroup.Normal);
+		// AddClassifier(position, 3, TypeSubgroup.Normal); // <- seems to actually make matching worse lol lmao
+		AddClassifier(innerClasses, 5, TypeSubgroup.Normal);
+		AddClassifier(methodCount, 3, TypeSubgroup.Normal);
+		AddClassifier(fieldCount, 3, TypeSubgroup.Normal);
+		AddClassifier(hierarchySiblings, 2, TypeSubgroup.Normal);
+		AddClassifier(similarMethods, 10, TypeSubgroup.Normal);
+		AddClassifier(outReferences, 6, TypeSubgroup.Normal);
+		AddClassifier(inReferences, 6, TypeSubgroup.Normal);
+		AddClassifier(stringConstants, 8, TypeSubgroup.Normal);
+		AddClassifier(numericConstants, 6, TypeSubgroup.Normal);
+		AddClassifier(methodOutReferences, 5, TypeSubgroup.Normal, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(methodInReferences, 6, TypeSubgroup.Normal, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(fieldReadReferences, 5, TypeSubgroup.Normal, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(fieldWriteReferences, 5, TypeSubgroup.Normal, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(membersFull, 10, TypeSubgroup.Normal, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(inRefsBci, 6, TypeSubgroup.Normal, ClassifierLevel.Extra);
+		// Enum subgroup
+		AddClassifier(outerClass, 6, TypeSubgroup.Enum);
+		AddClassifier(position, 3, TypeSubgroup.Enum);
+		AddClassifier(fieldCount, 3, TypeSubgroup.Enum);
+		AddClassifier(hierarchySiblings, 2, TypeSubgroup.Enum);
+		AddClassifier(outReferences, 6, TypeSubgroup.Enum);
+		AddClassifier(inReferences, 6, TypeSubgroup.Enum);
+		AddClassifier(numericConstants, 6, TypeSubgroup.Enum);
+		AddClassifier(membersFull, 10, TypeSubgroup.Enum, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(inRefsBci, 6, TypeSubgroup.Enum, ClassifierLevel.Extra);
+		// Delegate subgroup
+		AddClassifier(outerClass, 6, TypeSubgroup.Delegate);
+		// AddClassifier(position, 3, TypeSubgroup.Delegate);
+		AddClassifier(methodCount, 3, TypeSubgroup.Delegate);
+		AddClassifier(fieldCount, 3, TypeSubgroup.Delegate);
+		AddClassifier(similarMethods, 10, TypeSubgroup.Delegate);
+		AddClassifier(outReferences, 6, TypeSubgroup.Delegate);
+		AddClassifier(inReferences, 6, TypeSubgroup.Delegate);
+		AddClassifier(stringConstants, 8, TypeSubgroup.Delegate);
+		AddClassifier(numericConstants, 6, TypeSubgroup.Delegate);
+		AddClassifier(methodOutReferences, 5, TypeSubgroup.Delegate, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(methodInReferences, 6, TypeSubgroup.Delegate, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(fieldReadReferences, 5, TypeSubgroup.Delegate, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(fieldWriteReferences, 5, TypeSubgroup.Delegate, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(membersFull, 10, TypeSubgroup.Delegate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		AddClassifier(inRefsBci, 6, TypeSubgroup.Delegate, ClassifierLevel.Extra);
 	}
 
-	public static void AddClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
+	public static void AddClassifier(AbstractClassifier classifier, double weight, TypeSubgroup subgroup, params ClassifierLevel[] levels) {
 		if (levels.Length == 0) levels = Enum.GetValues<ClassifierLevel>();
 
 		classifier.weight = weight;
 
 		foreach (ClassifierLevel level in levels) {
-			if (!classifiers.ContainsKey(level)) classifiers[level] = [];
-			classifiers[level].Add(classifier);
-			maxScore[level] = GetMaxScore(level) + weight;
+			if (!classifiers.ContainsKey((subgroup, level))) classifiers[(subgroup, level)] = [];
+			classifiers[(subgroup, level)].Add(classifier);
+			maxScore[(subgroup, level)] = GetMaxScore(level, subgroup) + weight;
 		}
 	}
 
-	public static double GetMaxScore(ClassifierLevel level) {
-		return maxScore.GetValueOrDefault(level, 0);
+	public static double GetMaxScore(ClassifierLevel level, TypeSubgroup subgroup) {
+		return maxScore.GetValueOrDefault((subgroup, level), 0);
 	}
 
-	public static List<RankResult<TypeInstance>> Rank(TypeInstance src, TypeInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch) {
-		return ClassifierUtil.Rank(src, dsts, classifiers.GetValueOrDefault(level, []), ClassifierUtil.CheckPotentialEquality, env, maxMismatch);
+	public static List<RankResult<TypeInstance>> Rank(TypeInstance src, TypeInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch, TypeSubgroup subgroup) {
+		return ClassifierUtil.Rank(src, dsts, classifiers.GetValueOrDefault((subgroup, level), []), ClassifierUtil.CheckPotentialEquality, env, maxMismatch);
 	}
 
-	public static List<RankResult<TypeInstance>> RankParallel(TypeInstance src, TypeInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch) {
-		return ClassifierUtil.RankParallel(src, dsts, classifiers.GetValueOrDefault(level, []), ClassifierUtil.CheckPotentialEquality, env, maxMismatch);
+	public static List<RankResult<TypeInstance>> RankParallel(TypeInstance src, TypeInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch, TypeSubgroup subgroup) {
+		return ClassifierUtil.RankParallel(src, dsts, classifiers.GetValueOrDefault((subgroup, level), []), ClassifierUtil.CheckPotentialEquality, env, maxMismatch);
 	}
 
-	private static readonly Dictionary<ClassifierLevel, List<IClassifier<TypeInstance>>> classifiers = [];
-	private static readonly Dictionary<ClassifierLevel, double> maxScore = [];
+	private static readonly Dictionary<(TypeSubgroup, ClassifierLevel), List<IClassifier<TypeInstance>>> classifiers = [];
+	private static readonly Dictionary<(TypeSubgroup, ClassifierLevel), double> maxScore = [];
 
 	private static readonly AbstractClassifier classTypeCheck = new("class type check", (clsA, clsB, env) => {
 			// int mask = Opcodes.ACC_ENUM | Opcodes.ACC_INTERFACE | Opcodes.ACC_ANNOTATION | Opcodes.ACC_RECORD | Opcodes.ACC_ABSTRACT;
@@ -69,11 +97,11 @@ public class TypeClassifier {
 			diff += clsA.CecilType.IsClass != clsB.CecilType.IsClass ? 1 : 0;
 			diff += clsA.CecilType.IsInterface != clsB.CecilType.IsInterface ? 1 : 0;
 			diff += clsA.CecilType.IsAbstract != clsB.CecilType.IsAbstract ? 1 : 0;
-			diff += clsA.CecilType.IsEnum != clsB.CecilType.IsEnum ? 1 : 0;
+			// diff += clsA.CecilType.IsEnum != clsB.CecilType.IsEnum ? 1 : 0; // excluded because we special-case enums anyway
 			diff += clsA.CecilType.IsValueType != clsB.CecilType.IsValueType ? 1 : 0;
 			diff += clsA.CecilType.IsSealed != clsB.CecilType.IsSealed ? 1 : 0; // TODO maybe this one should be weighted less?
 
-			return 1 - diff / 6.0;
+			return 1 - diff / 5.0;
 		}
 	);
 
@@ -142,6 +170,13 @@ public class TypeClassifier {
 			if (outerA == null || outerB == null) return 0;
 
 			return ClassifierUtil.CheckPotentialEquality(outerA, outerB) ? 1 : 0;
+		}
+	);
+
+	private static readonly AbstractClassifier position = new("position", (clsA, clsB, env) => {
+			if (clsA.position == -1 && clsB.position == -1) return 1;
+			if (clsA.position == -1 || clsB.position == -1) return 0;
+			return ClassifierUtil.ClassifyPosition(clsA, clsB, cls => cls.position, (f, idx) => f.outerType!.nestedTypes[idx], f => f.outerType!.nestedTypes);
 		}
 	);
 
@@ -238,7 +273,7 @@ public class TypeClassifier {
 		}
 
 		foreach (FieldInstance field in cls.fieldsById.Values) {
-			ret.Add(field.ContainingType);
+			ret.Add(field.fieldType);
 		}
 
 		return ret;

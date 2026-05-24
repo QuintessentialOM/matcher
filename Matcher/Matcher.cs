@@ -181,9 +181,10 @@ public class Matcher {
 			parentTypeInstance.childTypes.Add(cls);
 			cls.baseType = parentTypeInstance;
 		}
-		foreach (var nestedType in cls.CecilType.NestedTypes) {
+		foreach (var (index, nestedType) in cls.CecilType.NestedTypes.WithIndex()) {
 			var nestedTypeInstance = env.GetCreateTypeInstance(nestedType.Name);
 			nestedTypeInstance.outerType = cls;
+			nestedTypeInstance.position = index;
 			cls.nestedTypes.Add(nestedTypeInstance);
 		}
 		foreach (var iface in cls.CecilType.Interfaces) {
@@ -787,6 +788,11 @@ public class Matcher {
 
 	private const double absClassAutoMatchThreshold = 0.8;
 	private const double relClassAutoMatchThreshold = 0.075;
+	private const double absEnumAutoMatchThreshold = 0.8;
+	private const double relEnumAutoMatchThreshold = 0.075;
+	private const double absDelegateAutoMatchThreshold = 0.8;
+	private const double relDelegateAutoMatchThreshold = 0.075;
+
 	private const double absMethodAutoMatchThreshold = 0.8;
 	private const double relMethodAutoMatchThreshold = 0.075;
 	private const double absFieldAutoMatchThreshold = 0.8;
@@ -800,9 +806,9 @@ public class Matcher {
 
 	public void AutoMatchAll(Action<double> progressReceiver) {
 		Console.WriteLine($"initial {GetStatus(true)}");
-		if (AutoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)) {
+		if (AutoMatchClasses(ClassifierLevel.Initial, progressReceiver)) {
 			Console.WriteLine($"classes {GetStatus(true)}");
-			AutoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+			AutoMatchClasses(ClassifierLevel.Initial, progressReceiver);
 		}
 		Console.WriteLine($"classes {GetStatus(true)}");
 
@@ -834,23 +840,25 @@ public class Matcher {
 				break;
 			}
 
-			matchedAny |= matchedClassesBefore = AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+			matchedAny |= matchedClassesBefore = AutoMatchClasses(level, progressReceiver);
 		} while (matchedAny);
 	}
 
-	public bool AutoMatchClasses(Action<double> progressReceiver) {
-		return AutoMatchClasses(autoMatchMaxLevel, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+	public bool AutoMatchClasses(ClassifierLevel level, Action<double> progressReceiver) {
+		return AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver, TypeSubgroup.Normal)
+			|| AutoMatchClasses(level, absEnumAutoMatchThreshold, relEnumAutoMatchThreshold, progressReceiver, TypeSubgroup.Enum)
+			|| AutoMatchClasses(level, absDelegateAutoMatchThreshold, relDelegateAutoMatchThreshold, progressReceiver, TypeSubgroup.Delegate);
 	}
 
-	public bool AutoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
-		static bool filter(TypeInstance cls) => cls.IsReal() && (!assumeBothOrNoneObfuscated || cls.IsNameObfuscated) && !cls.HasMatch() && cls.IsMatchable();
+	public bool AutoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver, TypeSubgroup subgroup) {
+		bool filter(TypeInstance cls) => cls.IsReal() && (!assumeBothOrNoneObfuscated || cls.IsNameObfuscated) && !cls.HasMatch() && cls.IsMatchable() && cls.GetSubgroup() == subgroup;
 
 		List<TypeInstance> classes = [.. new List<TypeInstance>(envA.types.Values).Where(filter)];
 
 		// TypeInstance[] cmpClasses = new List<TypeInstance>(envB.types.Values).Where(filter).ToList();
 		List<TypeInstance> cmpClasses = [.. new List<TypeInstance>(envB.types.Values).Where(filter)];
 
-		double maxScore = TypeClassifier.GetMaxScore(level);
+		double maxScore = TypeClassifier.GetMaxScore(level, subgroup);
 		double maxMismatch = maxScore - ClassifierUtil.GetRawScore(absThreshold * (1 - relThreshold), maxScore);
 		Dictionary<TypeInstance, TypeInstance> matches = [];//new ConcurrentHashDictionary<>(classes.Count);
 
@@ -865,7 +873,7 @@ public class Matcher {
 		// }, progressReceiver);
 
 		foreach (var cls in classes) {
-			List<RankResult<TypeInstance>> ranking = TypeClassifier.Rank(cls, [.. cmpClasses], level, env, maxMismatch);
+			List<RankResult<TypeInstance>> ranking = TypeClassifier.Rank(cls, [.. cmpClasses], level, env, maxMismatch, subgroup);
 
 			if (ClassifierUtil.CheckRank(ranking, absThreshold, relThreshold, maxScore)) {
 				TypeInstance match = ranking[0].Subject;
