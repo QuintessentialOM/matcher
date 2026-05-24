@@ -847,13 +847,11 @@ public class Matcher {
 			}
 		}
 
-		// bool matchedAny;
-
-		// do {
-		// 	matchedAny = autoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
-		// 	Console.WriteLine($"args {getStatus(true)}");
-		// 	// matchedAny |= autoMatchMethodVars(ClassifierLevel.Full, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
-		// } while (matchedAny);
+		do {
+			matchedAny = AutoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
+			Console.WriteLine($"args {GetStatus(true)}");
+			// matchedAny |= autoMatchMethodVars(ClassifierLevel.Full, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
+		} while (matchedAny);
 	}
 
 	private void AutoMatchLevel(ClassifierLevel level, Action<double> progressReceiver) {

@@ -85,28 +85,28 @@ public class ClassifierUtil {
 		return true;
 	}
 
-	public static bool CheckPotentialEqualityNullable(TypeInstance a, TypeInstance b) {
+	public static bool CheckPotentialEqualityNullable(TypeInstance? a, TypeInstance? b) {
 		if (a == null && b == null) return true;
 		if (a == null || b == null) return false;
 
 		return CheckPotentialEquality(a, b);
 	}
 
-	public static bool CheckPotentialEqualityNullable(MethodInstance a, MethodInstance b) {
+	public static bool CheckPotentialEqualityNullable(MethodInstance? a, MethodInstance? b) {
 		if (a == null && b == null) return true;
 		if (a == null || b == null) return false;
 
 		return CheckPotentialEquality(a, b);
 	}
 
-	public static bool CheckPotentialEqualityNullable(FieldInstance a, FieldInstance b) {
+	public static bool CheckPotentialEqualityNullable(FieldInstance? a, FieldInstance? b) {
 		if (a == null && b == null) return true;
 		if (a == null || b == null) return false;
 
 		return CheckPotentialEquality(a, b);
 	}
 
-	public static bool CheckPotentialEqualityNullable(MethodParamInstance a, MethodParamInstance b) {
+	public static bool CheckPotentialEqualityNullable(MethodParamInstance? a, MethodParamInstance? b) {
 		if (a == null && b == null) return true;
 		if (a == null || b == null) return false;
 
@@ -254,11 +254,89 @@ public class ClassifierUtil {
 		return CompareLists(listA, listB, (list, ind) => list[ind], list => list.Count, (inA, inB) => CompareInsns(inA, inB, listA, listB, (list, item) => list.IndexOf(item), null, null, env));
 	}
 
-	private static int CompareInsns<T>(Instruction insnA, Instruction insnB, T listA, T listB, Func<T, Instruction, int> posProvider,
+	private static int CompareInsns<T>(Instruction inA, Instruction inB, T listA, T listB, Func<T, Instruction, int> posProvider,
 			MethodInstance mthA, MethodInstance mthB, MatchingEnv env) {
-		if (insnA.OpCode != insnB.OpCode) return COMPARED_DISTINCT;
+		if (inA.Operand is MethodReference operandMethodA) {
+			if (inA.OpCode != inB.OpCode || inB.Operand is not MethodReference operandMethodB) {
+				return COMPARED_DISTINCT;
+			} else {
+				// TODO don't use null descriptors
+				return CompareMethods(operandMethodA.DeclaringType.Name, operandMethodA.Name, /*operandMethodA.desc*/ null,
+					operandMethodB.DeclaringType.Name, operandMethodB.Name, /*operandMethodB.desc*/ null,
+					env) ? COMPARED_SIMILAR : COMPARED_DISTINCT;
+			}
+		}
+		if (inA.Operand is TypeReference operandTypeA) {
+			// box, isinst, constrained., initobj, newarr
+			if (inA.OpCode != inB.OpCode || inB.Operand is not TypeReference operandTypeB) {
+				return COMPARED_DISTINCT;
+			} else {
+				TypeInstance? clsA = env.EnvA.types!.GetValueOrDefault(operandTypeA.Name, null);
+				TypeInstance? clsB = env.EnvB.types!.GetValueOrDefault(operandTypeB.Name, null);
 
-		// TODO
+				return CheckPotentialEqualityNullable(clsA, clsB) ? COMPARED_SIMILAR : COMPARED_DISTINCT;
+			}
+			
+		}
+		if (inA.Operand is FieldReference operandFieldA) {
+			if (inB.Operand is not FieldReference operandFieldB) {
+				return COMPARED_DISTINCT;
+			}
+			// TODO fabric matcher doesn't consider opcode for fields, so reads/writes are considered the same. unsure why, or if this is desirable behavior
+			TypeInstance? clsA = env.EnvA.types!.GetValueOrDefault(operandFieldA.DeclaringType.Name, null);
+			TypeInstance? clsB = env.EnvB.types!.GetValueOrDefault(operandFieldB.DeclaringType.Name, null);
+
+			if (clsA == null && clsB == null) return COMPARED_SIMILAR;
+			if (clsA == null || clsB == null) return COMPARED_DISTINCT;
+
+			FieldInstance? fieldA = clsA.GetField(operandFieldA.Name, operandFieldA.DeclaringType.Name);
+			FieldInstance? fieldB = clsB.GetField(operandFieldB.Name, operandFieldB.DeclaringType.Name);
+
+			return CheckPotentialEqualityNullable(fieldA, fieldB) ? COMPARED_SIMILAR : COMPARED_DISTINCT;
+		}
+		if (inA.Operand is ParameterDefinition || inA.OpCode == OpCodes.Ldarg_0 || inA.OpCode == OpCodes.Ldarg_1 || inA.OpCode == OpCodes.Ldarg_2 || inA.OpCode == OpCodes.Ldarg_3) {
+			var operandParamA = inA.Operand is ParameterDefinition p ? p : null;
+			var indexA = operandParamA != null ? operandParamA.Index :
+					inA.OpCode == OpCodes.Ldarg_0 ? 0 :
+					inA.OpCode == OpCodes.Ldarg_1 ? 1 :
+					inA.OpCode == OpCodes.Ldarg_2 ? 2 :
+					inA.OpCode == OpCodes.Ldarg_3 ? 3 : -1;
+			if (indexA == -1) {
+				Console.WriteLine("param index not found; this shouldn't happen");
+				return COMPARED_DISTINCT;
+			}
+			if (inB.Operand is ParameterDefinition || inB.OpCode == OpCodes.Ldarg_0 || inB.OpCode == OpCodes.Ldarg_1 || inB.OpCode == OpCodes.Ldarg_2 || inB.OpCode == OpCodes.Ldarg_3) {
+				var operandParamB = inB.Operand is ParameterDefinition p2 ? p2 : null;
+				var indexB = operandParamB != null ? operandParamB.Index :
+						inB.OpCode == OpCodes.Ldarg_0 ? 0 :
+						inB.OpCode == OpCodes.Ldarg_1 ? 1 :
+						inB.OpCode == OpCodes.Ldarg_2 ? 2 :
+						inB.OpCode == OpCodes.Ldarg_3 ? 3 : -1;
+				if (indexB == -1) {
+					Console.WriteLine("param index not found; this shouldn't happen");
+					return COMPARED_DISTINCT;
+				}
+				if ((inA.OpCode == OpCodes.Ldarga || inA.OpCode == OpCodes.Ldarga_S) != (inB.OpCode == OpCodes.Ldarga || inB.OpCode == OpCodes.Ldarga_S)) {
+					return COMPARED_DISTINCT; // one is loading address, the other is loading value
+				}
+				if (indexA >= mthA.args.Length || indexB >= mthB.args.Length) {
+					// TODO this shouldn't be possible but evidently I'm doing something wrong
+					return COMPARED_POSSIBLE;
+				}
+				var argA = mthA.args[indexA];
+				var argB = mthB.args[indexB];
+				if (!CheckPotentialEquality(argA, argB)) {
+					return COMPARED_DISTINCT;
+				} else {
+					return CheckPotentialEquality(argA.paramType, argB.paramType) ? COMPARED_SIMILAR : COMPARED_POSSIBLE;
+				}
+			}
+			return COMPARED_DISTINCT;
+		}
+
+		// TODO probably want more special-cases for instructions that can be compared more precisely than just by opcode
+		if (inA.OpCode != inB.OpCode) return COMPARED_DISTINCT;
+		return COMPARED_SIMILAR;
 		
 		// switch (insnA.getType()) {
 		// case Instruction.INT_INSN: {
@@ -438,30 +516,27 @@ public class ClassifierUtil {
 		// 	break;
 		// }
 		// }
-
-		return COMPARED_SIMILAR;
 	}
 
-	// TODO these are used for comparing method invocations; will probably be different for us anyway
-	// private static bool compareMethods(String ownerA, String nameA, String descA, bool toIfA, String ownerB, String nameB, String descB, bool toIfB, MatchingEnv env) {
-	// 	TypeInstance clsA = env.envA.types[ownerA];
-	// 	TypeInstance clsB = env.envB.types[ownerB];
+	private static bool CompareMethods(string ownerA, string nameA, string descA, string ownerB, string nameB, string descB, MatchingEnv env) {
+		TypeInstance clsA = env.EnvA.types[ownerA];
+		TypeInstance clsB = env.EnvB.types[ownerB];
 
-	// 	if (clsA == null && clsB == null) return true;
-	// 	if (clsA == null || clsB == null) return false;
+		if (clsA == null && clsB == null) return true;
+		if (clsA == null || clsB == null) return false;
 
-	// 	return compareMethods(clsA, nameA, descA, toIfA, clsB, nameB, descB, toIfB);
-	// }
+		return CompareMethods(clsA, nameA, descA, clsB, nameB, descB);
+	}
 
-	// private static bool compareMethods(TypeInstance ownerA, String nameA, String descA, bool toIfA, TypeInstance ownerB, String nameB, String descB, bool toIfB) {
-	// 	MethodInstance methodA = ownerA.resolveMethod(nameA, descA, toIfA);
-	// 	MethodInstance methodB = ownerB.resolveMethod(nameB, descB, toIfB);
+	private static bool CompareMethods(TypeInstance ownerA, string nameA, string descA, TypeInstance ownerB, string nameB, string descB) {
+		MethodInstance? methodA = ownerA.GetMethod(nameA, descA);
+		MethodInstance? methodB = ownerB.GetMethod(nameB, descB);
 
-	// 	if (methodA == null && methodB == null) return true;
-	// 	if (methodA == null || methodB == null) return false;
+		if (methodA == null && methodB == null) return true;
+		if (methodA == null || methodB == null) return false;
 
-	// 	return checkPotentialEquality(methodA, methodB);
-	// }
+		return CheckPotentialEquality(methodA, methodB);
+	}
 
 	private static double CompareLists<T, U>(T listA, T listB, RetrieveListElement<T, U> elementRetriever, RetrieveListSize<T> sizeRetriever, CompareElements<U> elementComparator) {
 		int sizeA = sizeRetriever.Invoke(listA);

@@ -1,11 +1,15 @@
+using System.Linq;
+using Mono.Cecil;
+using Mono.Cecil.Cil;
+
 namespace Matcher.Matching.Classifier;
 
 public class MethodParamClassifier {
 	public static void Init() {
 		AddClassifier(type, 10);
-		// addClassifier(position, 3);
-		// addClassifier(lvIndex, 2);
-		// addClassifier(usage, 8);
+		AddClassifier(position, 3);
+		// AddClassifier(lvIndex, 2);
+		AddClassifier(usage, 8);
 	}
 
 	public static void AddClassifier(AbstractClassifier classifier, double weight, params ClassifierLevel[] levels) {
@@ -36,62 +40,76 @@ public class MethodParamClassifier {
 		}
 	);
 
-	// private static readonly AbstractClassifier position = new("position", (argA, argB, env) => {
-	// 		return ClassifierUtil.classifyPosition(methodA, methodB,
-	// 				MethodParamInstance.getIndex,
-	// 				(a, idx) => (a.isArg() ? a.getMethod().getArg(idx) : a.getMethod().getVar(idx)),
-	// 				a => (a.isArg() ? a.getMethod().getArgs() : a.getMethod().getVars()));
-	// 	}
-	// );
+	private static readonly AbstractClassifier position = new("position", (argA, argB, env) => {
+			return ClassifierUtil.ClassifyPosition(argA, argB,
+					param => param.position,
+					(a, idx) => a.ContainingMethod.args[idx],// (a, idx) => (a.isArg() ? a.getMethod().getArg(idx) : a.getMethod().getVar(idx)),
+					a => [.. a.ContainingMethod.args]);// a => (a.isArg() ? a.getMethod().getArgs() : a.getMethod().getVars()));
+		}
+	);
 
 	// private static readonly AbstractClassifier lvIndex = new("lv index", (argA, argB, env) => {
 	// 		return argA.getLvIndex() == argB.getLvIndex() ? 1 : 0;
 	// 	}
 	// );
 
-	// private static readonly AbstractClassifier usage = new("usage", (argA, argB, env) => {
-	// 		int[] map = ClassifierUtil.mapInsns(argA.getMethod(), argB.getMethod());
-	// 		if (map == null) return 1;
+	private static readonly AbstractClassifier usage = new("usage", (argA, argB, env) => {
+			int[]? map = ClassifierUtil.MapInsns(argA.ContainingMethod, argB.ContainingMethod);
+			if (map == null) return 1;
 
-	// 		InsnList ilA = argA.getMethod().getAsmNode().instructions;
-	// 		InsnList ilB = argB.getMethod().getAsmNode().instructions;
-	// 		int matched = 0;
-	// 		int mismatched = 0;
+			var ilA = argA.ContainingMethod.CecilMethod!.Body.Instructions;
+			var ilB = argB.ContainingMethod.CecilMethod!.Body.Instructions;
 
-	// 		for (int srcIdx = 0; srcIdx < map.Length; srcIdx++) {
-	// 			int dstIdx = map[srcIdx];
-	// 			if (dstIdx < 0) continue;
+			int matched = 0;
+			int mismatched = 0;
 
-	// 			AbstractInsnNode inA = ilA.get(srcIdx);
-	// 			AbstractInsnNode inB = ilB.get(dstIdx);
-	// 			int varA, varB;
+			for (int srcIdx = 0; srcIdx < map.Length; srcIdx++) {
+				int dstIdx = map[srcIdx];
+				if (dstIdx < 0) continue;
 
-	// 			if (inA.getType() == AbstractInsnNode.VAR_INSN) {
-	// 				varA = ((VarInsnNode) inA).var;
-	// 				varB = ((VarInsnNode) inB).var;
-	// 			} else if (inA.getType() == AbstractInsnNode.IINC_INSN) {
-	// 				varA = ((IincInsnNode) inA).var;
-	// 				varB = ((IincInsnNode) inB).var;
-	// 			} else {
-	// 				continue;
-	// 			}
+				var inA = ilA[srcIdx];
+				var inB = ilB[dstIdx];
+				int varA, varB;
 
-	// 			if (varA == argA.getLvIndex() && (argA.getStartInsn() < 0 || srcIdx >= argA.getStartInsn() && srcIdx < argA.getEndInsn())) {
-	// 				if (varB == argB.getLvIndex() && (argB.getStartInsn() < 0 || dstIdx >= argB.getStartInsn() && dstIdx < argB.getEndInsn())) {
-	// 					matched++;
-	// 				} else {
-	// 					mismatched++;
-	// 				}
-	// 			}
-	// 		}
+				if (inA.Operand is ParameterDefinition paramA) varA = paramA.Index;
+				else if (inA.OpCode == OpCodes.Ldarg_0) varA = 0;
+				else if (inA.OpCode == OpCodes.Ldarg_1) varA = 1;
+				else if (inA.OpCode == OpCodes.Ldarg_2) varA = 2;
+				else if (inA.OpCode == OpCodes.Ldarg_3) varA = 3;
+				else continue;
 
-	// 		if (matched == 0 && mismatched == 0) {
-	// 			return 1;
-	// 		} else {
-	// 			return (double) matched / (matched + mismatched);
-	// 		}
-	// 	}
-	// );
+				if (inB.Operand is ParameterDefinition paramB) varB = paramB.Index;
+				else if (inB.OpCode == OpCodes.Ldarg_0) varB = 0;
+				else if (inB.OpCode == OpCodes.Ldarg_1) varB = 1;
+				else if (inB.OpCode == OpCodes.Ldarg_2) varB = 2;
+				else if (inB.OpCode == OpCodes.Ldarg_3) varB = 3;
+				else continue;
+
+				if (varA == argA.position) {
+					if (varB == argB.position) {
+						matched++;
+					} else {
+						mismatched++;
+					}
+				}
+
+				// more complex logic for handling locals as well
+				// if (varA == argA.getLvIndex() && (argA.getStartInsn() < 0 || srcIdx >= argA.getStartInsn() && srcIdx < argA.getEndInsn())) {
+				// 	if (varB == argB.getLvIndex() && (argB.getStartInsn() < 0 || dstIdx >= argB.getStartInsn() && dstIdx < argB.getEndInsn())) {
+				// 		matched++;
+				// 	} else {
+				// 		mismatched++;
+				// 	}
+				// }
+			}
+
+			if (matched == 0 && mismatched == 0) {
+				return 1;
+			} else {
+				return (double) matched / (matched + mismatched);
+			}
+		}
+	);
 
 	public class AbstractClassifier(string name, Func<MethodParamInstance, MethodParamInstance, MatchingEnv, double> classifierFunc) : IClassifier<MethodParamInstance> {
 		private readonly string name = name;

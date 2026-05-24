@@ -28,7 +28,7 @@ public class MethodInstance : MatchableMember {
 		MethodParamInstance[] args = new MethodParamInstance[cecilMethod.Parameters.Count];
 		for (int i = 0; i < cecilMethod.Parameters.Count; i++) {
 			var param = cecilMethod.Parameters[i];
-			args[i] = new MethodParamInstance(env, this, param, !Matcher.NonObfuscatedPattern.IsMatch(param.Name));
+			args[i] = new MethodParamInstance(env, this, param, !Matcher.NonObfuscatedPattern.IsMatch(param.Name), i);
 			var argType = args[i].paramType;
 			typeRefs.Add(argType);
 			argType.methodTypeRefs.Add(this);

@@ -9,20 +9,22 @@ public class MethodParamInstance : Matchable {
 	private MethodParamInstance? matchedMethodParam;
 	private bool matchable = true;
 	public TypeInstance paramType;
+	public readonly int position;
 
 	[SetsRequiredMembers]
-	public MethodParamInstance(LocalClassEnv env, MethodInstance containingMethod, ParameterDefinition cecilParameter, bool isNameObfuscated) : base(env, isNameObfuscated) {
+	public MethodParamInstance(LocalClassEnv env, MethodInstance containingMethod, ParameterDefinition cecilParameter, bool isNameObfuscated, int position) : base(env, isNameObfuscated) {
 		this.ContainingMethod = containingMethod;
 		this.CecilParameter = cecilParameter;
+		this.position = position;
 		paramType = env.GetCreateTypeInstance(cecilParameter.ParameterType.Name);
 	}
 	
 	public override string GetId() {
-		throw new NotImplementedException();
+		return CecilParameter.Name; // TODO include type
 	}
 	
 	public override string GetName() {
-		throw new NotImplementedException();
+		return CecilParameter.Name;
 	}
 
 	public override bool HasPotentialMatch() {
