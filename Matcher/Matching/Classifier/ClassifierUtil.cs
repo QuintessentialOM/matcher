@@ -319,9 +319,11 @@ public class ClassifierUtil {
 				if ((inA.OpCode == OpCodes.Ldarga || inA.OpCode == OpCodes.Ldarga_S) != (inB.OpCode == OpCodes.Ldarga || inB.OpCode == OpCodes.Ldarga_S)) {
 					return COMPARED_DISTINCT; // one is loading address, the other is loading value
 				}
-				if (indexA >= mthA.args.Length || indexB >= mthB.args.Length) {
-					// TODO this shouldn't be possible but evidently I'm doing something wrong
-					return COMPARED_POSSIBLE;
+				// Special-case `this` parameter for non-static methods
+				if (!mthA.CecilMethod!.IsStatic) indexA -= 1;
+				if (!mthB.CecilMethod!.IsStatic) indexB -= 1;
+				if (indexA == -1 || indexB == -1) {
+					return indexA == -1 && indexB == -1 ? COMPARED_SIMILAR : COMPARED_DISTINCT;
 				}
 				var argA = mthA.args[indexA];
 				var argB = mthB.args[indexB];

@@ -9,6 +9,7 @@ public class MethodParamInstance : Matchable {
 	private MethodParamInstance? matchedMethodParam;
 	private bool matchable = true;
 	public TypeInstance paramType;
+	/** excludes self parameter for non-static methods */
 	public readonly int position;
 
 	[SetsRequiredMembers]
