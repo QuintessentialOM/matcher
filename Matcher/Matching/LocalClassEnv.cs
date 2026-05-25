@@ -35,10 +35,10 @@ public class LocalClassEnv {
 	}
 
 	public TypeInstance? GetCreateTypeInstance(TypeReference type, bool createUnknown) {
-		if (types.ContainsKey(type.Name)) return types[type.Name];
+		if (types.ContainsKey(type.FullName)) return types[type.FullName];
 		if (!createUnknown) return null;
-		types[type.Name] = new TypeInstance(this, type, !Matcher.NonObfuscatedPattern.IsMatch(type.Name));
-		return types[type.Name];
+		types[type.FullName] = new TypeInstance(this, type, !Matcher.NonObfuscatedPattern.IsMatch(type.Name));
+		return types[type.FullName];
 	}
 
 	// TypeInstance getClsByName(String name, NameType nameType) {

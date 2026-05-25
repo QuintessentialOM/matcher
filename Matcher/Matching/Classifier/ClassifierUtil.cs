@@ -261,8 +261,8 @@ public class ClassifierUtil {
 				return COMPARED_DISTINCT;
 			} else {
 				// TODO don't use null descriptors
-				return CompareMethods(operandMethodA.DeclaringType.Name, operandMethodA.Name, /*operandMethodA.desc*/ null,
-					operandMethodB.DeclaringType.Name, operandMethodB.Name, /*operandMethodB.desc*/ null,
+				return CompareMethods(operandMethodA.DeclaringType, operandMethodA.Name, /*operandMethodA.desc*/ null,
+					operandMethodB.DeclaringType, operandMethodB.Name, /*operandMethodB.desc*/ null,
 					env) ? COMPARED_SIMILAR : COMPARED_DISTINCT;
 			}
 		}
@@ -520,9 +520,9 @@ public class ClassifierUtil {
 		// }
 	}
 
-	private static bool CompareMethods(string ownerA, string nameA, string descA, string ownerB, string nameB, string descB, MatchingEnv env) {
-		TypeInstance clsA = env.EnvA.types[ownerA];
-		TypeInstance clsB = env.EnvB.types[ownerB];
+	private static bool CompareMethods(TypeReference ownerA, string nameA, string descA, TypeReference ownerB, string nameB, string descB, MatchingEnv env) {
+		TypeInstance clsA = env.EnvA.types[ownerA.FullName];
+		TypeInstance clsB = env.EnvB.types[ownerB.FullName];
 
 		if (clsA == null && clsB == null) return true;
 		if (clsA == null || clsB == null) return false;

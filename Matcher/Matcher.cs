@@ -52,10 +52,10 @@ public class Matcher {
 		// step E: assign temporary names idk
 
 		foreach (TypeDefinition type in CollectNestedTypes(moduleA.Types)) {
-			envA.types[type.Name] = new TypeInstance(envA, type, !NonObfuscatedPattern.IsMatch(type.Name));
+			envA.types[type.FullName] = new TypeInstance(envA, type, !NonObfuscatedPattern.IsMatch(type.Name));
 		}
 		foreach (TypeDefinition type in CollectNestedTypes(moduleB.Types)) {
-			envB.types[type.Name] = new TypeInstance(envB, type, !NonObfuscatedPattern.IsMatch(type.Name));
+			envB.types[type.FullName] = new TypeInstance(envB, type, !NonObfuscatedPattern.IsMatch(type.Name));
 		}
 		// ToList to copy since we mutate the types dictionary during initialization (to add extra types not present in the ModuleDefinition itself)
 		foreach (var type in envA.types.Values.ToList()) {
