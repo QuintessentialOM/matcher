@@ -43,10 +43,6 @@ public class MethodInstance : MatchableMember {
 		return CecilMethod.Name; // TODO include desc
 	}
 
-	public override bool HasPotentialMatch() {
-		throw new NotImplementedException();
-	}
-
 	public override bool IsMatchable() {
 		return hierarchyData != null && hierarchyData.matchable && ContainingType.IsMatchable();
 	}
@@ -70,14 +66,6 @@ public class MethodInstance : MatchableMember {
 		matchedMethod = method;
 		// TODO it probably shouldn't be null?
 		if (hierarchyData != null) hierarchyData!.MatchedHierarchy = matchedMethod?.hierarchyData;
-	}
-
-	public override Matchable GetOwner() {
-		throw new NotImplementedException();
-	}
-
-	public override bool IsFullyMatched(bool recursive) {
-		throw new NotImplementedException();
 	}
 
 	public static string GetId(string name, string desc) {

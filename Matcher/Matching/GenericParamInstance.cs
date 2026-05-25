@@ -18,10 +18,6 @@ public class GenericParamInstance : MatchableMember {
 		return GetName();
 	}
 
-	public override bool HasPotentialMatch() {
-		throw new NotImplementedException();
-	}
-
 	public override bool IsMatchable() {
 		throw new NotImplementedException();
 	}
@@ -36,13 +32,5 @@ public class GenericParamInstance : MatchableMember {
 
 	public void SetMatch(GenericParamInstance? genericParam) {
 		matchedGenericParam = genericParam;
-	}
-
-	public override Matchable GetOwner() {
-		throw new NotImplementedException();
-	}
-
-	public override bool IsFullyMatched(bool recursive) {
-		throw new NotImplementedException();
 	}
 }

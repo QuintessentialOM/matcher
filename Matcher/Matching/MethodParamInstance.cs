@@ -28,10 +28,6 @@ public class MethodParamInstance : Matchable {
 		return CecilParameter.Name;
 	}
 
-	public override bool HasPotentialMatch() {
-		throw new NotImplementedException();
-	}
-
 	public override bool IsMatchable() {
 		return matchable && ContainingMethod.IsMatchable();
 	}
@@ -51,13 +47,5 @@ public class MethodParamInstance : Matchable {
 
 	public void SetMatch(MethodParamInstance? methodParam) {
 		matchedMethodParam = methodParam;
-	}
-
-	public override Matchable GetOwner() {
-		throw new NotImplementedException();
-	}
-
-	public override bool IsFullyMatched(bool recursive) {
-		throw new NotImplementedException();
 	}
 }

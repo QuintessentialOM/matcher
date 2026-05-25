@@ -26,10 +26,6 @@ public class FieldInstance : MatchableMember {
 		return id;
 	}
 
-	public override bool HasPotentialMatch() {
-		throw new NotImplementedException();
-	}
-
 	public override bool IsMatchable() {
 		return matchable && ContainingType.IsMatchable();
 	}
@@ -49,14 +45,6 @@ public class FieldInstance : MatchableMember {
 
 	public void SetMatch(FieldInstance? field) {
 		matchedField = field;
-	}
-
-	public override Matchable GetOwner() {
-		throw new NotImplementedException();
-	}
-
-	public override bool IsFullyMatched(bool recursive) {
-		throw new NotImplementedException();
 	}
 
 	public static string GetId(string name, string desc) {

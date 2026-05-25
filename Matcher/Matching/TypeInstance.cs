@@ -68,17 +68,6 @@ public class TypeInstance : MatchableMemberOrClass {
 		return CecilType != null;
 	}
 
-	public override bool HasPotentialMatch() {
-		if (matchedType != null) return true;
-		if (!IsMatchable()) return false;
-
-		foreach (var o in Env.GetOther().types.Values) {
-			if (o.IsReal() && ClassifierUtil.CheckPotentialEquality(this, o)) return true;
-		}
-
-		return false;
-	}
-
 	public override bool IsMatchable() {
 		return matchable;
 	}
@@ -97,14 +86,6 @@ public class TypeInstance : MatchableMemberOrClass {
 
 	public void SetMatch(TypeInstance? type) {
 		matchedType = type;
-	}
-
-	public override bool IsFullyMatched(bool recursive) {
-		throw new NotImplementedException();
-	}
-
-	public override Matchable GetOwner() {
-		throw new NotImplementedException();
 	}
 
 	public bool IsArray() {
