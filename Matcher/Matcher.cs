@@ -831,6 +831,7 @@ public class Matcher {
 			matchedAny = AutoMatchMethods(level, absThreshold, relThreshold, progressReceiver);
 			matchedAny |= AutoMatchFields(level, absThreshold, relThreshold, progressReceiver);
 			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Normal);
+			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.GenericInstance);
 			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Enum);
 			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Delegate);
 			if (matchedAny) {
@@ -872,6 +873,7 @@ public class Matcher {
 
 	public bool AutoMatchClasses(ClassifierLevel level, Action<double> progressReceiver) {
 		return AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver, TypeSubgroup.Normal)
+			|| AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver, TypeSubgroup.GenericInstance)
 			|| AutoMatchClasses(level, absEnumAutoMatchThreshold, relEnumAutoMatchThreshold, progressReceiver, TypeSubgroup.Enum)
 			|| AutoMatchClasses(level, absDelegateAutoMatchThreshold, relDelegateAutoMatchThreshold, progressReceiver, TypeSubgroup.Delegate);
 	}

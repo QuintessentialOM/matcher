@@ -26,6 +26,9 @@ public class TypeInstance : MatchableMemberOrClass {
 	public readonly TypeInstance? elementType; // type of array elements, for array types
 	public List<TypeInstance> arrays = []; // array types with this type as an element, for non-array types
 
+	public readonly TypeInstance? genericType; // the generic type that this type is an instance of, for generic instance types
+	public List<TypeInstance> concreteTypes = []; // instances of this type with specified generic parameters, for generic types
+
 	public readonly HashSet<string> strings = [];
 
 	public TypeInstance? baseType;
@@ -53,10 +56,14 @@ public class TypeInstance : MatchableMemberOrClass {
 	private TypeInstance(LocalClassEnv env, TypeReference cecilType, string name, bool isNameObfuscated) : base(env, cecilType, name, isNameObfuscated) {
 		int arrayDimensions = ArrayPattern.Count(name);
 		if (arrayDimensions > 0) {
-			var elementName = name.TrimEnd(['[', ']']);
-			// TODO does GetElementType give desired behavior
+			// var elementName = name.TrimEnd(['[', ']']);
+			// TODO does GetElementType give desired behavior for arrays
 			elementType = env.GetCreateTypeInstance(cecilType.GetElementType());
 			elementType.arrays.Add(this);
+		}
+		if (cecilType.IsGenericInstance) {
+			genericType = env.GetCreateTypeInstance(cecilType.GetElementType());
+			genericType.concreteTypes.Add(this);
 		}
 	}
 	
@@ -99,6 +106,7 @@ public class TypeInstance : MatchableMemberOrClass {
 	}
 
 	public TypeSubgroup GetSubgroup() {
+		if (CecilTypeReference.IsGenericInstance) return TypeSubgroup.GenericInstance;
 		if (CecilType == null) return TypeSubgroup.Normal; // TODO is this valid? maybe not? idk?
 		if (CecilType.IsEnum) return TypeSubgroup.Enum;
 		if (CecilType.BaseType?.FullName?.Equals("System.MulticastDelegate") ?? false) return TypeSubgroup.Delegate;
