@@ -68,17 +68,17 @@ public class TypeClassifier {
 	}
 
 	public static double GetMaxScore(ClassifierLevel level, TypeSubgroup subgroup) {
-		if (subgroup == TypeSubgroup.GenericInstance) subgroup = TypeSubgroup.Normal; // use same classifiers for now
+		if (subgroup == TypeSubgroup.GenericInstance || subgroup == TypeSubgroup.TypeGenericParameter || subgroup == TypeSubgroup.MethodGenericParameter) subgroup = TypeSubgroup.Normal; // use same classifiers for now
 		return maxScore.GetValueOrDefault((subgroup, level), 0);
 	}
 
 	public static List<RankResult<TypeInstance>> Rank(TypeInstance src, TypeInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch, TypeSubgroup subgroup) {
-		if (subgroup == TypeSubgroup.GenericInstance) subgroup = TypeSubgroup.Normal; // use same classifiers for now
+		if (subgroup == TypeSubgroup.GenericInstance || subgroup == TypeSubgroup.TypeGenericParameter || subgroup == TypeSubgroup.MethodGenericParameter) subgroup = TypeSubgroup.Normal; // use same classifiers for now
 		return ClassifierUtil.Rank(src, dsts, classifiers.GetValueOrDefault((subgroup, level), []), ClassifierUtil.CheckPotentialEquality, env, maxMismatch);
 	}
 
 	public static List<RankResult<TypeInstance>> RankParallel(TypeInstance src, TypeInstance[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch, TypeSubgroup subgroup) {
-		if (subgroup == TypeSubgroup.GenericInstance) subgroup = TypeSubgroup.Normal; // use same classifiers for now
+		if (subgroup == TypeSubgroup.GenericInstance || subgroup == TypeSubgroup.TypeGenericParameter || subgroup == TypeSubgroup.MethodGenericParameter) subgroup = TypeSubgroup.Normal; // use same classifiers for now
 		return ClassifierUtil.RankParallel(src, dsts, classifiers.GetValueOrDefault((subgroup, level), []), ClassifierUtil.CheckPotentialEquality, env, maxMismatch);
 	}
 
@@ -94,6 +94,11 @@ public class TypeClassifier {
 
 			// return 1 - int.bitCount(resultA ^ resultB) / 5;
 			int diff = 0;
+
+			if (clsA.CecilType == null || clsB.CecilType == null) {
+				// TODO
+				return clsA.CecilType == null && clsB.CecilType == null ? 1 : 0;
+			}
 
 			diff += clsA.CecilType.IsClass != clsB.CecilType.IsClass ? 1 : 0;
 			diff += clsA.CecilType.IsInterface != clsB.CecilType.IsInterface ? 1 : 0;

@@ -154,6 +154,15 @@ public class Matcher {
 			cls.methodsById[methodInstance.GetId()] = methodInstance;
 			cls.methodsOrdered.Add(methodInstance);
 
+			foreach (var (genericPosition, genericParam) in method.GenericParameters.WithIndex()) {
+				if (genericParam.Type == GenericParameterType.Method && genericParam.DeclaringMethod.FullName == methodInstance.CecilMethod.FullName) {
+					var genericParamInstance = new TypeInstance(env, genericParam, !NonObfuscatedPattern.IsMatch(genericParam.Name));
+					env.types[genericParam.FullName] = genericParamInstance;
+					methodInstance.genericParamsOrdered.Add(genericParamInstance);
+					genericParamInstance.position = genericPosition;
+				}
+			}
+
 			// Collect strings in method bodies. C# sets fields in constructor + static constructor so this should account for initialized string fields too... I think?
 			if(method.Body != null && method.Body.Instructions != null) {
 				foreach(var instr in method.Body.Instructions) {
@@ -169,10 +178,13 @@ public class Matcher {
 			cls.fieldsById[fieldInstance.GetId()] = fieldInstance;
 			cls.fieldsOrdered.Add(fieldInstance);
 		}
-		foreach (var (position, genericParam) in cls.CecilType.GenericParameters.WithIndex()) {
-			var genericParamInstance = new GenericParamInstance(env, cls, genericParam, position, !NonObfuscatedPattern.IsMatch(genericParam.Name));
-			cls.genericParamsById[genericParamInstance.GetId()] = genericParamInstance;
-			cls.genericParamsOrdered.Add(genericParamInstance);
+		foreach (var (genericPosition, genericParam) in cls.CecilType.GenericParameters.WithIndex()) {
+			if (genericParam.DeclaringType.FullName == cls.GetId()) {
+				var genericParamInstance = new TypeInstance(env, genericParam, !NonObfuscatedPattern.IsMatch(genericParam.Name));
+				env.types[genericParam.FullName] = genericParamInstance;
+				cls.genericParamsOrdered.Add(genericParamInstance);
+				genericParamInstance.position = genericPosition;
+			}
 		}
 
 		var parent = cls.CecilType.BaseType;
@@ -477,6 +489,7 @@ public class Matcher {
 	public void MatchType(TypeInstance a, TypeInstance b) {
 		if (a == null) throw new NullReferenceException("null class A");
 		if (b == null) throw new NullReferenceException("null class B");
+		if (a.GetSubgroup() != b.GetSubgroup()) throw new ArgumentException("trying to match types in different subgroups");
 		if (a.GetArrayDimensions() != b.GetArrayDimensions()) throw new ArgumentException("the classes don't have the same amount of array dimensions");
 		if (a.GetMatch() == b) return;
 
@@ -550,7 +563,7 @@ public class Matcher {
 			}
 		}
 
-		// TODO generics
+		// TODO generics?
 	}
 	
 	public void MatchMethod(MethodInstance a, MethodInstance b) {
@@ -570,7 +583,7 @@ public class Matcher {
 			if (a.hierarchyData?.MatchedHierarchy != null) {
 				foreach (MethodInstance m in membersA!) {
 					if (m.HasMatch()) {
-						UnmatchMethodParams(m);
+						UnmatchMethodParamsAndGenerics(m);
 						m.GetMatch()!.SetMatch(null);
 						m.SetMatch(null);
 					}
@@ -580,7 +593,7 @@ public class Matcher {
 			if (b.hierarchyData?.MatchedHierarchy != null) {
 				foreach (MethodInstance m in membersB!) {
 					if (m.HasMatch()) {
-						UnmatchMethodParams(m);
+						UnmatchMethodParamsAndGenerics(m);
 						m.GetMatch()!.SetMatch(null);
 						m.SetMatch(null);
 					}
@@ -606,13 +619,13 @@ public class Matcher {
 			}
 		} else {
 			if (a.GetMatch() != null) {
-				UnmatchMethodParams(a);
+				UnmatchMethodParamsAndGenerics(a);
 				a.GetMatch()!.SetMatch(null);
 				a.SetMatch(null);
 			}
 
 			if (b.GetMatch() != null) {
-				UnmatchMethodParams(b);
+				UnmatchMethodParamsAndGenerics(b);
 				b.GetMatch()!.SetMatch(null);
 				b.SetMatch(null);
 			}
@@ -620,21 +633,6 @@ public class Matcher {
 			a.SetMatch(b);
 			b.SetMatch(a);
 		}
-	}
-
-	public void MatchGenericParam(GenericParamInstance a, GenericParamInstance b) {
-		if (a == null) throw new NullReferenceException("null generic param A");
-		if (b == null) throw new NullReferenceException("null generic param B");
-		// if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
-		if (a.GetMatch() == b) return;
-
-		// LOGGER.debug("Matching field {} => {}{}", a, b, (a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
-
-		if (a.GetMatch() != null) a.GetMatch()!.SetMatch(null);
-		if (b.GetMatch() != null) b.GetMatch()!.SetMatch(null);
-
-		a.SetMatch(b);
-		b.SetMatch(a);
 	}
 
 	public void MatchField(FieldInstance a, FieldInstance b) {
@@ -686,6 +684,8 @@ public class Matcher {
 				UnmatchType(array);
 			}
 		}
+
+		// TODO unmatch concrete types for generic type
 	}
 
 	private static void UnmatchMembersAndGenerics(TypeInstance cls) {
@@ -694,7 +694,7 @@ public class Matcher {
 				m.GetMatch()!.SetMatch(null);
 				m.SetMatch(null);
 
-				UnmatchMethodParams(m);
+				UnmatchMethodParamsAndGenerics(m);
 			}
 		}
 
@@ -705,10 +705,10 @@ public class Matcher {
 			}
 		}
 
-		foreach (GenericParamInstance m in cls.genericParamsById.Values) {
-			if (m.GetMatch() != null) {
-				m.GetMatch()!.SetMatch(null);
-				m.SetMatch(null);
+		foreach (TypeInstance p in cls.genericParamsOrdered) {
+			if (p.GetMatch() != null) {
+				p.GetMatch()!.SetMatch(null);
+				p.SetMatch(null);
 			}
 		}
 	}
@@ -719,7 +719,7 @@ public class Matcher {
 
 		// LOGGER.debug("Unmatching member {} (was {}){}", m, m.getMatch(), (m.hasMappedName() ? " ("+m.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
-		UnmatchMethodParams(m);
+		UnmatchMethodParamsAndGenerics(m);
 
 		m.GetMatch()!.SetMatch(null);
 		m.SetMatch(null);
@@ -729,19 +729,11 @@ public class Matcher {
 				UnmatchMethod(member);
 			}
 		}
+
+		// TODO unmatch owned generic params
 	}
 
 	public void UnmatchField(FieldInstance f) {
-		if (f == null) throw new NullReferenceException("null member");
-		if (f.GetMatch() == null) return;
-
-		// LOGGER.debug("Unmatching member {} (was {}){}", f, f.getMatch(), (f.hasMappedName() ? " ("+f.getName(NameType.MAPPED_PLAIN)+")" : ""));
-
-		f.GetMatch()!.SetMatch(null);
-		f.SetMatch(null);
-	}
-
-	public void UnmatchGenericParam(GenericParamInstance f) {
 		if (f == null) throw new NullReferenceException("null member");
 		if (f.GetMatch() == null) return;
 
@@ -761,11 +753,18 @@ public class Matcher {
 		a.SetMatch(null);
 	}
 
-	private static void UnmatchMethodParams(MethodInstance m) {
+	private static void UnmatchMethodParamsAndGenerics(MethodInstance m) {
 		foreach (MethodParamInstance arg in m.args) {
 			if (arg.GetMatch() != null) {
 				arg.GetMatch()!.SetMatch(null);
 				arg.SetMatch(null);
+			}
+		}
+
+		foreach (TypeInstance p in m.genericParamsOrdered) {
+			if (p.GetMatch() != null) {
+				p.GetMatch()!.SetMatch(null);
+				p.SetMatch(null);
 			}
 		}
 	}
@@ -832,6 +831,8 @@ public class Matcher {
 			matchedAny |= AutoMatchFields(level, absThreshold, relThreshold, progressReceiver);
 			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Normal);
 			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.GenericInstance);
+			matchedAny |= AutoMatchTypeGenericParams(level, absThreshold, relThreshold, progressReceiver);
+			matchedAny |= AutoMatchMethodGenericParams(level, absThreshold, relThreshold, progressReceiver);
 			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Enum);
 			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Delegate);
 			if (matchedAny) {
@@ -874,6 +875,8 @@ public class Matcher {
 	public bool AutoMatchClasses(ClassifierLevel level, Action<double> progressReceiver) {
 		return AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver, TypeSubgroup.Normal)
 			|| AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver, TypeSubgroup.GenericInstance)
+			|| AutoMatchTypeGenericParams(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)
+			|| AutoMatchMethodGenericParams(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)
 			|| AutoMatchClasses(level, absEnumAutoMatchThreshold, relEnumAutoMatchThreshold, progressReceiver, TypeSubgroup.Enum)
 			|| AutoMatchClasses(level, absDelegateAutoMatchThreshold, relDelegateAutoMatchThreshold, progressReceiver, TypeSubgroup.Delegate);
 	}
@@ -988,12 +991,26 @@ public class Matcher {
 		return matches.Count != 0;
 	}
 
+	public bool AutoMatchTypeGenericParams(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
+		int totalUnmatched = 0; // originally AtomicInteger
+		double maxScore = TypeClassifier.GetMaxScore(level, TypeSubgroup.TypeGenericParameter);
+
+		Dictionary<TypeInstance, TypeInstance> matches = MatchMembers(level, absThreshold, relThreshold,
+				cls => cls.genericParamsOrdered.ToArray(), (a, b, c, d, e) => TypeClassifier.Rank(a, b, c, d, e, TypeSubgroup.TypeGenericParameter), maxScore,
+				progressReceiver, ref totalUnmatched);
+
+		foreach (var entry in matches) {
+			MatchType(entry.Key, entry.Value);
+		}
+
+		return matches.Count != 0;
+	}
+
 	delegate List<RankResult<T>> IRanker<T>(T src, T[] dsts, ClassifierLevel level, MatchingEnv env, double maxMismatch);
 
-	// <T extends MemberInstance<T>>
 	private Dictionary<T, T> MatchMembers<T>(ClassifierLevel level, double absThreshold, double relThreshold,
 			Func<TypeInstance, T[]> memberGetter, IRanker<T> ranker, double maxScore,
-			Action<double> progressReceiver, ref int totalUnmatched) where T : MatchableMember {
+			Action<double> progressReceiver, ref int totalUnmatched) where T : Matchable {
 		List<TypeInstance> classes = env.EnvA.types.Values
 				.Where(cls => /*cls.isReal() &&*/ cls.HasMatch() && memberGetter.Invoke(cls).Length > 0)
 				.Where(cls => {
@@ -1071,6 +1088,61 @@ public class Matcher {
 	// public bool autoMatchMethodVars(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
 	// 	return autoMatchMethodVars(false, MethodInstance.getVars, level, absThreshold, relThreshold, progressReceiver);
 	// }
+
+	public bool AutoMatchMethodGenericParams(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
+		List<MethodInstance> methods = env.EnvA.types.Values
+				.Where(cls => /*cls.isReal() &&*/ cls.HasMatch() && cls.methodsById.Count > 0)
+				.SelectMany(cls => cls.methodsById.Values)
+				.Where(m => m.HasMatch() && m.genericParamsOrdered.Count > 0)
+				.Where(m => {
+					foreach (var a in m.genericParamsOrdered) {
+						if (!a.HasMatch() && a.IsMatchable()) return true;
+					}
+
+					return false;
+				})
+				.ToList();
+		Dictionary<TypeInstance, TypeInstance> matches;
+		int totalUnmatched = 0; // originally AtomicInteger
+
+		if (methods.Count == 0) {
+			matches = [];
+		} else {
+			double maxScore = MethodParamClassifier.GetMaxScore(level);
+			double maxMismatch = maxScore - ClassifierUtil.GetRawScore(absThreshold * (1 - relThreshold), maxScore);
+			matches = [];
+
+			foreach (var m in methods) {
+				int unmatched = 0;
+
+				foreach (TypeInstance var in m.genericParamsOrdered) {
+					if (var.HasMatch() || !var.IsMatchable()) continue;
+
+					List<RankResult<TypeInstance>> ranking = TypeClassifier.Rank(var, m.GetMatch().genericParamsOrdered.ToArray(), level, env, maxMismatch, TypeSubgroup.MethodGenericParameter);
+
+					if (ClassifierUtil.CheckRank(ranking, absThreshold, relThreshold, maxScore)) {
+						TypeInstance match = ranking[0].Subject;
+
+						matches[var] = match;
+					} else {
+						unmatched++;
+					}
+				}
+
+				// if we parallelize again
+				// if (unmatched > 0) Interlocked.Add(ref totalUnmatched, unmatched);
+				if (unmatched > 0) totalUnmatched += unmatched;
+			}
+
+			SanitizeMatches(matches);
+		}
+
+		foreach (var entry in matches) {
+			MatchType(entry.Key, entry.Value);
+		}
+
+		return matches.Count != 0;
+	}
 
 	private bool AutoMatchMethodVars(bool isArg, Func<MethodInstance, MethodParamInstance[]> supplier,
 			ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
@@ -1168,7 +1240,7 @@ public class Matcher {
 	}
 
 	public record MatchingStatus(int TotalClassCount, int MatchedClassCount, int TotalMethodCount, int MatchedMethodCount,
-			int TotalMethodArgCount, int MatchedMethodArgCount, int TotalFieldCount, int MatchedFieldCount) {}
+			int TotalMethodArgCount, int MatchedMethodArgCount, int TotalFieldCount, int MatchedFieldCount, int TotalGenericParamsCount, int MatchedGenericParamsCount) {}
 
 	public MatchingStatus GetStatus(bool inputsOnly) {
 		int totalClassCount = 0;
@@ -1181,6 +1253,8 @@ public class Matcher {
 		// int matchedMethodVarCount = 0;
 		int totalFieldCount = 0;
 		int matchedFieldCount = 0;
+		int totalGenericParamsCount = 0;
+		int matchedGenericParamsCount = 0;
 
 		foreach (TypeInstance cls in env.EnvA.types.Values) {
 			if (inputsOnly && cls.CecilType == null) continue;
@@ -1205,6 +1279,10 @@ public class Matcher {
 
 					// 	if (var.hasMatch()) matchedMethodVarCount++;
 					// }
+					foreach (var p in method.genericParamsOrdered) {
+						totalGenericParamsCount++;
+						if (p.HasMatch()) matchedGenericParamsCount++;
+					}
 				// }
 			}
 
@@ -1215,12 +1293,18 @@ public class Matcher {
 					if (field.HasMatch()) matchedFieldCount++;
 				// }
 			}
+
+			foreach (var p in cls.genericParamsOrdered) {
+				totalGenericParamsCount++;
+				if (p.HasMatch()) matchedGenericParamsCount++;
+			}
 		}
 
 		return new MatchingStatus(totalClassCount, matchedClassCount,
 				totalMethodCount, matchedMethodCount,
 				totalMethodArgCount, matchedMethodArgCount,
 				// totalMethodVarCount, matchedMethodVarCount,
-				totalFieldCount, matchedFieldCount);
+				totalFieldCount, matchedFieldCount,
+				totalGenericParamsCount, matchedGenericParamsCount);
 	}
 }

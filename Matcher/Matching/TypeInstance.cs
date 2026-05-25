@@ -14,11 +14,9 @@ public class TypeInstance : MatchableMemberOrClass {
 	} }
 	public readonly Dictionary<string, MethodInstance> methodsById = [];
 	public readonly Dictionary<string, FieldInstance> fieldsById = [];
-	public readonly Dictionary<string, GenericParamInstance> genericParamsById = [];
 
 	public readonly List<MethodInstance> methodsOrdered = [];
 	public readonly List<FieldInstance> fieldsOrdered = [];
-	public readonly List<GenericParamInstance> genericParamsOrdered = [];
 	
 	private bool matchable = true;
 	private TypeInstance? matchedType;
@@ -28,6 +26,7 @@ public class TypeInstance : MatchableMemberOrClass {
 
 	public readonly TypeInstance? genericType; // the generic type that this type is an instance of, for generic instance types
 	public List<TypeInstance> concreteTypes = []; // instances of this type with specified generic parameters, for generic types
+	public readonly List<TypeInstance> genericParamsOrdered = []; // owned generic params, for generic types. I think types always own their own generic params but I'm not actually sure in the case of inheritance or nested types?
 
 	public readonly HashSet<string> strings = [];
 
@@ -43,11 +42,11 @@ public class TypeInstance : MatchableMemberOrClass {
 	public readonly HashSet<MethodInstance> methodTypeRefs = [];
 	public readonly HashSet<FieldInstance> fieldTypeRefs = [];
 
-	// position of nested types within their outer type. unused on non-nested types, indicated by -1
+	// position of nested types within their outer type, and of generic params within their owner. unused on non-nested types, indicated by -1
 	public int position = -1;
 
 	[SetsRequiredMembers]
-	public TypeInstance(LocalClassEnv env, TypeReference cecilType, bool isNameObfuscated) : this(env, cecilType, cecilType.Name, isNameObfuscated) {
+	public TypeInstance(LocalClassEnv env, TypeReference cecilType, bool isNameObfuscated) : this(env, cecilType, cecilType.FullName, isNameObfuscated) {
 	}
 
 	private static readonly Regex ArrayPattern = new Regex(Regex.Escape("[]"));
@@ -107,6 +106,7 @@ public class TypeInstance : MatchableMemberOrClass {
 
 	public TypeSubgroup GetSubgroup() {
 		if (CecilTypeReference.IsGenericInstance) return TypeSubgroup.GenericInstance;
+		if (CecilTypeReference.IsGenericParameter) return ((GenericParameter) CecilTypeReference).Type == GenericParameterType.Type ? TypeSubgroup.TypeGenericParameter : TypeSubgroup.MethodGenericParameter;
 		if (CecilType == null) return TypeSubgroup.Normal; // TODO is this valid? maybe not? idk?
 		if (CecilType.IsEnum) return TypeSubgroup.Enum;
 		if (CecilType.BaseType?.FullName?.Equals("System.MulticastDelegate") ?? false) return TypeSubgroup.Delegate;

@@ -14,6 +14,8 @@ public class MethodInstance : MatchableMember {
 
 	public readonly HashSet<string> strings = [];
 
+	public readonly List<TypeInstance> genericParamsOrdered = []; // owned generic params, for generic types.
+
 	public readonly HashSet<MethodInstance> refsIn = [];
 	public readonly HashSet<MethodInstance> refsOut = [];
 	public readonly HashSet<FieldInstance> fieldReadRefs = [];

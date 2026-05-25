@@ -15,13 +15,11 @@ public class ClassMapping {
 }
 
 public class FieldMapping {
-	// public required string FieldTypeA;
 	public required string FieldNameA;
 	public string? FieldNameB;
 }
 
 public class MethodMapping {
-	// public required string ReturnTypeA;
 	public required string MethodNameA;
 	public string? MethodNameB;
 	public List<MethodParameterMapping> Parameters = [];
@@ -29,8 +27,6 @@ public class MethodMapping {
 }
 
 public class MethodParameterMapping {
-	public required uint ParameterIndex;
-	public required string ParameterTypeA;
 	public required string ParameterNameA;
 	public string? ParameterNameB;
 }
@@ -38,7 +34,6 @@ public class MethodParameterMapping {
 // TODO method locals?
 
 public class GenericParameterMapping {
-	// TODO could retain additional generic parameter info?
 	public required string GenericNameA;
 	public string? GenericNameB;
 }
