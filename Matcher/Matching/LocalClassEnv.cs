@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Mono.Cecil;
 
 namespace Matcher.Matching;
 
@@ -29,15 +30,15 @@ public class LocalClassEnv {
 
 	// TypeInstance getLocalClsById(String id);
 
-	public TypeInstance GetCreateTypeInstance(string id) {
-		return GetCreateTypeInstance(id, true)!;
+	public TypeInstance GetCreateTypeInstance(TypeReference type) {
+		return GetCreateTypeInstance(type, true)!;
 	}
 
-	public TypeInstance? GetCreateTypeInstance(string id, bool createUnknown) {
-		if (types.ContainsKey(id)) return types[id];
+	public TypeInstance? GetCreateTypeInstance(TypeReference type, bool createUnknown) {
+		if (types.ContainsKey(type.Name)) return types[type.Name];
 		if (!createUnknown) return null;
-		types[id] = new TypeInstance(this, id, !Matcher.NonObfuscatedPattern.IsMatch(id));
-		return types[id];
+		types[type.Name] = new TypeInstance(this, type, !Matcher.NonObfuscatedPattern.IsMatch(type.Name));
+		return types[type.Name];
 	}
 
 	// TypeInstance getClsByName(String name, NameType nameType) {

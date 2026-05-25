@@ -177,18 +177,18 @@ public class Matcher {
 
 		var parent = cls.CecilType.BaseType;
 		if (parent != null) {
-			var parentTypeInstance = env.GetCreateTypeInstance(parent.Name);
+			var parentTypeInstance = env.GetCreateTypeInstance(parent);
 			parentTypeInstance.childTypes.Add(cls);
 			cls.baseType = parentTypeInstance;
 		}
 		foreach (var (index, nestedType) in cls.CecilType.NestedTypes.WithIndex()) {
-			var nestedTypeInstance = env.GetCreateTypeInstance(nestedType.Name);
+			var nestedTypeInstance = env.GetCreateTypeInstance(nestedType);
 			nestedTypeInstance.outerType = cls;
 			nestedTypeInstance.position = index;
 			cls.nestedTypes.Add(nestedTypeInstance);
 		}
 		foreach (var iface in cls.CecilType.Interfaces) {
-			var ifaceInstance = env.GetCreateTypeInstance(iface.InterfaceType.Name);
+			var ifaceInstance = env.GetCreateTypeInstance(iface.InterfaceType);
 			ifaceInstance.implementedBy.Add(cls);
 			cls.interfaces.Add(ifaceInstance);
 		}
@@ -214,11 +214,11 @@ public class Matcher {
 			if (instr == null) continue;
 			// TODO does this cover all (non-dynamic) method invocations? does it include calling ctors?
 			if (instr.Operand is MethodReference mref/* && !mref.IsWindowsRuntimeProjection*/) {
-				HandleMethodInvocation(env, method, mref.DeclaringType.Name, mref.Name, null); // TODO desc
+				HandleMethodInvocation(env, method, mref); // TODO desc
 			}
 
 			if (instr.Operand is FieldReference fref) {
-				var owner = env.GetCreateTypeInstance(fref.DeclaringType.Name);
+				var owner = env.GetCreateTypeInstance(fref.DeclaringType);
 				var fieldInstance = owner.GetField(fref.Name, fref.FieldType.Name);
 				if (fieldInstance == null) {
 					continue; // TODO
@@ -301,8 +301,8 @@ public class Matcher {
 		}
 	}
 
-	private void HandleMethodInvocation(LocalClassEnv env, MethodInstance method, string rawOwner, string name, string? desc) {
-		MethodInstance dst = ResolveMethod(env, rawOwner, name, desc, true)!;
+	private void HandleMethodInvocation(LocalClassEnv env, MethodInstance method, MethodReference invokedMethod) {
+		MethodInstance dst = ResolveMethod(env, invokedMethod, true)!;
 		if (dst == null) return; // TODO
 
 		dst.refsIn.Add(method);
@@ -311,11 +311,11 @@ public class Matcher {
 		method.typeRefs.Add(dst.ContainingType);
 	}
 
-	private MethodInstance? ResolveMethod(LocalClassEnv env, string owner, string name, string? desc, bool create) {
-		TypeInstance? cls = env.GetCreateTypeInstance(owner, create);
+	private MethodInstance? ResolveMethod(LocalClassEnv env, MethodReference invokedMethod, bool create) {
+		TypeInstance? cls = env.GetCreateTypeInstance(invokedMethod.DeclaringType, create);
 		if (cls == null) return null;
 
-		MethodInstance? ret = cls.GetMethod(name, desc);
+		MethodInstance? ret = cls.GetMethod(invokedMethod.Name, null);
 
 		if (ret == null && create) {
 			// TODO

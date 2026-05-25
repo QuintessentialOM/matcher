@@ -34,7 +34,7 @@ public class MethodInstance : MatchableMember {
 			argType.methodTypeRefs.Add(this);
 		}
 		this.args = args;
-		returnType = env.GetCreateTypeInstance(cecilMethod.ReturnType.Name);
+		returnType = env.GetCreateTypeInstance(cecilMethod.ReturnType);
 		typeRefs.Add(returnType);
 		returnType.methodTypeRefs.Add(this);
 	}

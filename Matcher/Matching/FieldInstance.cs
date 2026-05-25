@@ -18,7 +18,7 @@ public class FieldInstance : MatchableMember {
 	[SetsRequiredMembers]
 	public FieldInstance(LocalClassEnv env, TypeInstance containingType, FieldDefinition cecilField, int position, bool isNameObfuscated) : base(env, containingType, cecilField, position, isNameObfuscated) {
 		id = GetId(cecilField.Name, cecilField.FieldType.Name);
-		fieldType = env.GetCreateTypeInstance(cecilField.FieldType.Name);
+		fieldType = env.GetCreateTypeInstance(cecilField.FieldType);
 		fieldType.fieldTypeRefs.Add(this);
 	}
 	

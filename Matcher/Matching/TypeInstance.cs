@@ -6,8 +6,11 @@ using Mono.Cecil;
 namespace Matcher.Matching;
 
 public class TypeInstance : MatchableMemberOrClass {
+	public TypeReference CecilTypeReference { get {
+		return (TypeReference) CecilMemberReference!;
+	} }
 	public TypeDefinition? CecilType { get {
-		return (TypeDefinition?) CecilMemberReference;
+		return CecilMemberReference is TypeDefinition def ? def : null;
 	} }
 	public readonly Dictionary<string, MethodInstance> methodsById = [];
 	public readonly Dictionary<string, FieldInstance> fieldsById = [];
@@ -41,21 +44,18 @@ public class TypeInstance : MatchableMemberOrClass {
 	public int position = -1;
 
 	[SetsRequiredMembers]
-	public TypeInstance(LocalClassEnv env, TypeDefinition cecilType, bool isNameObfuscated) : this(env, cecilType, cecilType.Name, isNameObfuscated) {
-	}
-
-	[SetsRequiredMembers]
-	public TypeInstance(LocalClassEnv env, string name, bool isNameObfuscated) : this(env, null, name, isNameObfuscated) {
+	public TypeInstance(LocalClassEnv env, TypeReference cecilType, bool isNameObfuscated) : this(env, cecilType, cecilType.Name, isNameObfuscated) {
 	}
 
 	private static readonly Regex ArrayPattern = new Regex(Regex.Escape("[]"));
 
 	[SetsRequiredMembers]
-	private TypeInstance(LocalClassEnv env, TypeDefinition? cecilType, string name, bool isNameObfuscated) : base(env, cecilType, name, isNameObfuscated) {
+	private TypeInstance(LocalClassEnv env, TypeReference cecilType, string name, bool isNameObfuscated) : base(env, cecilType, name, isNameObfuscated) {
 		int arrayDimensions = ArrayPattern.Count(name);
 		if (arrayDimensions > 0) {
 			var elementName = name.TrimEnd(['[', ']']);
-			elementType = env.GetCreateTypeInstance(elementName);
+			// TODO does GetElementType give desired behavior
+			elementType = env.GetCreateTypeInstance(cecilType.GetElementType());
 			elementType.arrays.Add(this);
 		}
 	}

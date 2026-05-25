@@ -17,7 +17,7 @@ public class MethodParamInstance : Matchable {
 		this.ContainingMethod = containingMethod;
 		this.CecilParameter = cecilParameter;
 		this.position = position;
-		paramType = env.GetCreateTypeInstance(cecilParameter.ParameterType.Name);
+		paramType = env.GetCreateTypeInstance(cecilParameter.ParameterType);
 	}
 	
 	public override string GetId() {
