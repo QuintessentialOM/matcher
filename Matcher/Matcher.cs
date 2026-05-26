@@ -37,7 +37,6 @@ public class Matcher {
 	}
 
 	public void Init(ModuleDefinition moduleA, ModuleDefinition moduleB, string stringDeobfNameA, string stringDeobfNameB, List<string> stringsPathsA, List<string> stringsPathsB) {
-		// TODO want to preprocess by replacing string deobf method calls with `ldstr`, like OpusMutatum does
 		Console.WriteLine("Inlining strings for module A");
 		InlineStrings(moduleA, stringDeobfNameA, LoadStrings(stringsPathsA));
 		Console.WriteLine("Inlining strings for module B");
@@ -563,7 +562,7 @@ public class Matcher {
 			}
 		}
 
-		// TODO generics?
+		// TODO generics? are there any unobf generic names?
 	}
 	
 	public void MatchMethod(MethodInstance a, MethodInstance b) {
@@ -685,7 +684,9 @@ public class Matcher {
 			}
 		}
 
-		// TODO unmatch concrete types for generic type
+		foreach (var concreteType in cls.concreteTypes) {
+			UnmatchType(concreteType);
+		}
 	}
 
 	private static void UnmatchMembersAndGenerics(TypeInstance cls) {
@@ -729,8 +730,6 @@ public class Matcher {
 				UnmatchMethod(member);
 			}
 		}
-
-		// TODO unmatch owned generic params
 	}
 
 	public void UnmatchField(FieldInstance f) {
@@ -1258,6 +1257,7 @@ public class Matcher {
 
 		foreach (TypeInstance cls in env.EnvA.types.Values) {
 			if (inputsOnly && cls.CecilType == null) continue;
+			if (cls.GetSubgroup() == TypeSubgroup.GenericInstance) continue; // generic instance matching doesn't actually matter
 
 			totalClassCount++;
 			if (cls.HasMatch()) matchedClassCount++;

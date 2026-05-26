@@ -4,7 +4,6 @@ using Mono.Cecil.Cil;
 namespace Matcher.Matching.Classifier;
 
 public class ClassifierUtil {
-	// TODO make literally anything in here care about generics
 	public static bool CheckPotentialEquality(TypeInstance a, TypeInstance b) {
 		if (a == b) return true;
 		if (a.GetMatch() != null) return a.GetMatch() == b;
@@ -755,7 +754,6 @@ public class ClassifierUtil {
 		}
 
 		// negative for reverse sort order
-		// TODO verify this sorting is correct
 		ret.Sort((a, b) => -a.Score.CompareTo(b.Score));
 
 		return ret;
