@@ -1,3 +1,4 @@
+using System.Linq;
 using Mono.Cecil;
 
 namespace Matcher.Matching.Classifier;
@@ -39,19 +40,10 @@ public class TypeClassifier {
 		AddClassifier(membersFull, 6, TypeSubgroup.Enum, ClassifierLevel.Full, ClassifierLevel.Extra);
 		// Delegate subgroup
 		AddClassifier(outerClass, 6, TypeSubgroup.Delegate);
-		// AddClassifier(position, 3, TypeSubgroup.Delegate);
-		AddClassifier(methodCount, 3, TypeSubgroup.Delegate);
-		AddClassifier(fieldCount, 3, TypeSubgroup.Delegate);
-		AddClassifier(similarMethods, 10, TypeSubgroup.Delegate);
-		AddClassifier(outReferences, 6, TypeSubgroup.Delegate);
+		AddClassifier(delegateArgTypes, 12, TypeSubgroup.Delegate);
+		AddClassifier(delegateRetType, 8, TypeSubgroup.Delegate);
 		AddClassifier(inReferences, 6, TypeSubgroup.Delegate);
-		AddClassifier(stringConstants, 8, TypeSubgroup.Delegate);
-		AddClassifier(numericConstants, 6, TypeSubgroup.Delegate);
-		AddClassifier(methodOutReferences, 5, TypeSubgroup.Delegate, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		AddClassifier(methodInReferences, 6, TypeSubgroup.Delegate, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		AddClassifier(fieldReadReferences, 5, TypeSubgroup.Delegate, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		AddClassifier(fieldWriteReferences, 5, TypeSubgroup.Delegate, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		AddClassifier(membersFull, 10, TypeSubgroup.Delegate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		AddClassifier(inRefsBci, 6, TypeSubgroup.Delegate, ClassifierLevel.Extra);
 	}
 
@@ -521,6 +513,20 @@ public class TypeClassifier {
 		// 	ClassifierUtil.handleNumberValue(asmNode.value, ints, longs, floats, doubles);
 		// }
 	}
+
+	private static readonly AbstractClassifier delegateArgTypes = new("delegate arg types", (clsA, clsB, env) => {
+			return ClassifierUtil.CompareClassLists(getArgTypes(clsA.GetMethod("Invoke", null)!), getArgTypes(clsB.GetMethod("Invoke", null)!));
+		}
+	);
+
+	private static List<TypeInstance> getArgTypes(MethodInstance method) {
+		return [.. method.args.Select(param => param.paramType)];
+	}
+
+	private static readonly AbstractClassifier delegateRetType = new("delegate ret type", (clsA, clsB, env) => {
+			return ClassifierUtil.CheckPotentialEquality(clsA.GetMethod("Invoke", null)!.returnType, clsB.GetMethod("Invoke", null)!.returnType) ? 1 : 0;
+		}
+	);
 
 	public class AbstractClassifier(string name, Func<TypeInstance, TypeInstance, MatchingEnv, double> classifierFunc) : IClassifier<TypeInstance> {
 		private readonly string name = name;
