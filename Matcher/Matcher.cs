@@ -2,6 +2,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Matcher.matching.SpecialCases;
 using Matcher.Matching;
 using Matcher.Matching.Classifier;
 using Mono.Cecil;
@@ -15,11 +16,13 @@ public class Matcher {
 	public MatchingEnv env;
 	readonly LocalClassEnv envA;
 	readonly LocalClassEnv envB;
+	readonly Mappings? mappingsA;
 
-	public Matcher() {
+	public Matcher(Mappings? mappingsA) {
 		env = new();
 		envA = env.EnvA;
 		envB = env.EnvB;
+		this.mappingsA = mappingsA;
 	}
 
 
@@ -568,7 +571,7 @@ public class Matcher {
 	public void MatchMethod(MethodInstance a, MethodInstance b) {
 		if (a == null) throw new NullReferenceException("null method A");
 		if (b == null) throw new NullReferenceException("null method B");
-		// if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
+		if (a.ContainingType.GetMatch() != b.ContainingType) throw new Exception("the methods don't belong to the same class");
 		if (a.GetMatch() == b) return;
 
 		// LOGGER.debug("Matching method {} => {}{}", a, b, (a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
@@ -637,7 +640,7 @@ public class Matcher {
 	public void MatchField(FieldInstance a, FieldInstance b) {
 		if (a == null) throw new NullReferenceException("null field A");
 		if (b == null) throw new NullReferenceException("null field B");
-		// if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
+		if (a.ContainingType.GetMatch() != b.ContainingType) throw new Exception("the fields don't belong to the same class");
 		if (a.GetMatch() == b) return;
 
 		// LOGGER.debug("Matching field {} => {}{}", a, b, (a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
@@ -652,7 +655,7 @@ public class Matcher {
 	public void MatchMethodParam(MethodParamInstance a, MethodParamInstance b) {
 		if (a == null) throw new NullReferenceException("null method var A");
 		if (b == null) throw new NullReferenceException("null method var B");
-		// if (a.getMethod().getMatch() != b.getMethod()) throw new IllegalArgumentException("the method vars don't belong to the same method");
+		if (a.ContainingMethod.GetMatch() != b.ContainingMethod) throw new Exception("the method vars don't belong to the same method");
 		// if (a.isArg() != b.isArg()) throw new IllegalArgumentException("the method vars are not of the same kind");
 		if (a.GetMatch() == b) return;
 
@@ -817,6 +820,14 @@ public class Matcher {
 		Console.WriteLine($"intermediate {GetStatus(true)}");
 		AutoMatchLevel(ClassifierLevel.Full, progressReceiver);
 		Console.WriteLine($"full {GetStatus(true)}");
+
+		if (mappingsA != null) {
+			var specialCases = new SpecialCases(this, mappingsA);
+			specialCases.DoSpecialCaseMatches();
+		}
+
+		Console.WriteLine($"special-cases {GetStatus(true)}");
+
 		AutoMatchLevel(ClassifierLevel.Extra, progressReceiver);
 		Console.WriteLine($"extra {GetStatus(true)}");
 
@@ -825,28 +836,28 @@ public class Matcher {
 		var relThreshold = relClassAutoMatchThreshold;
 		bool matchedAny;
 
-		while (true) {
-			matchedAny = AutoMatchMethods(level, absThreshold, relThreshold, progressReceiver);
-			matchedAny |= AutoMatchFields(level, absThreshold, relThreshold, progressReceiver);
-			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Normal);
-			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.GenericInstance);
-			matchedAny |= AutoMatchTypeGenericParams(level, absThreshold, relThreshold, progressReceiver);
-			matchedAny |= AutoMatchMethodGenericParams(level, absThreshold, relThreshold, progressReceiver);
-			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Enum);
-			matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Delegate);
-			if (matchedAny) {
-				Console.WriteLine($"bruteforce {GetStatus(true)}");
-				absThreshold = absClassAutoMatchThreshold;
-				relThreshold = relClassAutoMatchThreshold;
-			} else {
-				if (absThreshold == minAbsMatchThreshold && relThreshold == minRelMatchThreshold) {
-					break;
-				} else {
-					absThreshold = Math.Max(minAbsMatchThreshold, absThreshold * 0.9);
-					relThreshold = Math.Max(minRelMatchThreshold, relThreshold * 0.9);
-				}
-			}
-		}
+		// while (true) {
+		// 	matchedAny = AutoMatchMethods(level, absThreshold, relThreshold, progressReceiver);
+		// 	matchedAny |= AutoMatchFields(level, absThreshold, relThreshold, progressReceiver);
+		// 	matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Normal);
+		// 	matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.GenericInstance);
+		// 	matchedAny |= AutoMatchTypeGenericParams(level, absThreshold, relThreshold, progressReceiver);
+		// 	matchedAny |= AutoMatchMethodGenericParams(level, absThreshold, relThreshold, progressReceiver);
+		// 	matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Enum);
+		// 	matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Delegate);
+		// 	if (matchedAny) {
+		// 		Console.WriteLine($"bruteforce {GetStatus(true)}");
+		// 		absThreshold = absClassAutoMatchThreshold;
+		// 		relThreshold = relClassAutoMatchThreshold;
+		// 	} else {
+		// 		if (absThreshold == minAbsMatchThreshold && relThreshold == minRelMatchThreshold) {
+		// 			break;
+		// 		} else {
+		// 			absThreshold = Math.Max(minAbsMatchThreshold, absThreshold * 0.9);
+		// 			relThreshold = Math.Max(minRelMatchThreshold, relThreshold * 0.9);
+		// 		}
+		// 	}
+		// }
 
 		do {
 			matchedAny = AutoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
