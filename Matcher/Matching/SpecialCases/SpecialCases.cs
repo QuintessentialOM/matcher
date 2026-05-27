@@ -1,8 +1,10 @@
+using System.Collections;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Matcher.Matching;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Mono.Cecil.Rocks;
 
 namespace Matcher.matching.SpecialCases;
 
@@ -17,6 +19,7 @@ public class SpecialCases {
 
 	public void DoSpecialCaseMatches() {
 		MatchTextures();
+		MatchClass9();
 	}
 
 	private TypeInstance FindTypeAFromIntermediary(string intermediaryName) {
@@ -27,6 +30,19 @@ public class SpecialCases {
 	private MethodInstance FindMethodAFromIntermediary(TypeInstance typeA, string intermediaryName) {
 		var obfName = mappingsA.Classes.Where(cls => cls.ClassNameA == typeA.CecilTypeReference.Name).Single().Methods.Where(method => method.MethodNameB == intermediaryName).Single().MethodNameA;
 		return typeA.GetMethod(obfName, null)!;
+	}
+
+	private string GetIntermediaryForTypeA(TypeInstance typeInstance) {
+		return GetIntermediaryForTypeA(typeInstance.CecilTypeReference);
+	}
+
+	private string GetIntermediaryForTypeA(TypeReference typeReference) {
+		var cls = mappingsA.Classes.Where(cls => cls.ClassNameA == typeReference.Name).SingleOrDefault((ClassMapping?) null);
+		return cls?.ClassNameB ?? "???";
+	}
+
+	private string GetIntermediaryForFieldA(FieldInstance fieldInstance) {
+		return GetIntermediaryForFieldA(fieldInstance.CecilField);
 	}
 
 	private string GetIntermediaryForFieldA(FieldReference fieldReference) {
@@ -145,5 +161,64 @@ public class SpecialCases {
 		}
 
 		Console.WriteLine($"Matched {fieldMatchCandidates.Count} fields and {typeMatchCandidates.Count} inner classes in Textures");
+	}
+
+	private void MatchClass9() {
+		const string class9Intermediary = "class_9";
+
+		var class9A = FindTypeAFromIntermediary(class9Intermediary);
+		var class9B = class9A.GetMatch();
+		if (class9B == null) throw new Exception("class_9 match not found");
+
+		// structs inside class_9 are uniquely identified by their size. currently, at least.
+		var structsABySize = new Dictionary<int, TypeInstance>();
+		var structsBBySize = new Dictionary<int, TypeInstance>();
+
+		class9A.nestedTypes.ForEach(type => {
+			structsABySize.Add(type.CecilType.ClassSize, type);
+		});
+		class9B.nestedTypes.ForEach(type => {
+			structsBBySize.Add(type.CecilType.ClassSize, type);
+		});
+
+		int count = 0;
+
+		foreach (var size in structsABySize.Keys.Union(structsBBySize.Keys)) {
+			if (!structsABySize.ContainsKey(size)) {
+				Console.WriteLine($"Unmatched struct in assembly B: {structsBBySize[size].CecilTypeReference.FullName}");
+			} else if (!structsBBySize.ContainsKey(size)) {
+				Console.WriteLine($"Unmatched struct in assembly A: {GetIntermediaryForTypeA(structsABySize[size])} ({structsABySize[size].CecilTypeReference.FullName})");
+			} else {
+				matcher.MatchType(structsABySize[size], structsBBySize[size]);
+				count++;
+			}
+		}
+
+		Console.WriteLine($"Matched {count} structs in class_9");
+
+		var fieldsAByData = new Dictionary<string, FieldInstance>();
+		var fieldsBByData = new Dictionary<string, FieldInstance>();
+
+		foreach (var field in class9A.fieldsOrdered) {
+			fieldsAByData.Add(BitConverter.ToString(field.CecilField.InitialValue), field);
+		}
+		foreach (var field in class9B.fieldsOrdered) {
+			fieldsBByData.Add(BitConverter.ToString(field.CecilField.InitialValue), field);
+		}
+
+		count = 0;
+
+		foreach (var data in fieldsAByData.Keys.Union(fieldsBByData.Keys)) {
+			if (!fieldsAByData.ContainsKey(data)) {
+				Console.WriteLine($"Unmatched field in assembly B: {fieldsBByData[data].CecilField!.FullName}");
+			} else if (!fieldsBByData.ContainsKey(data)) {
+				Console.WriteLine($"Unmatched field in assembly A: {GetIntermediaryForFieldA(fieldsAByData[data])} ({fieldsAByData[data].CecilField!.FullName})");
+			} else {
+				matcher.MatchField(fieldsAByData[data], fieldsBByData[data]);
+				count++;
+			}
+		}
+
+		Console.WriteLine($"Matched {count} static fields in class_9");
 	}
 }
