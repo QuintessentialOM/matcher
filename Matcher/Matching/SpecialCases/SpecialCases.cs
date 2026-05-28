@@ -20,6 +20,7 @@ public class SpecialCases {
 	public void DoSpecialCaseMatches() {
 		MatchTextures();
 		MatchClass9();
+		MatchClass111();
 	}
 
 	private TypeInstance FindTypeAFromIntermediary(string intermediaryName) {
@@ -196,6 +197,7 @@ public class SpecialCases {
 
 		Console.WriteLine($"Matched {count} structs in class_9");
 
+		// Identify fields by their initialization data
 		var fieldsAByData = new Dictionary<string, FieldInstance>();
 		var fieldsBByData = new Dictionary<string, FieldInstance>();
 
@@ -220,5 +222,85 @@ public class SpecialCases {
 		}
 
 		Console.WriteLine($"Matched {count} static fields in class_9");
+	}
+
+	private void MatchClass111() {
+		// Class with GL method bindings - has a bunch of fields and delegate types corresponding to gl functions, and some mystery enums
+		const string class111Intermediary = "class_111";
+		// const string method149Intermediary = "method_149";
+		const string method150Intermediary = "method_150";
+
+		var class111A = FindTypeAFromIntermediary(class111Intermediary);
+		var class111B = class111A.GetMatch();
+		if (class111B == null) throw new Exception("class_111 match not found");
+
+		// var method149A = FindMethodAFromIntermediary(class111A, method149Intermediary);
+		var method150A = FindMethodAFromIntermediary(class111A, method150Intermediary);
+
+		// var method149B = method149A.GetMatch();
+		var method150B = method150A.GetMatch();
+
+		if (method150B == null) throw new Exception("method_150 match not found");
+
+		var glMethodNameToFieldA = new Dictionary<string, FieldReference>();
+		var glMethodNameToFieldB = new Dictionary<string, FieldReference>();
+
+		var lastString = "";
+		foreach (var instr in method150A.CecilMethod.Body.Instructions) {
+			if (instr.OpCode == OpCodes.Ldstr) {
+				lastString = (string) instr.Operand;
+			} else if (instr.OpCode == OpCodes.Stsfld) {
+				// TODO validate field?
+				if (lastString == "") continue;
+				glMethodNameToFieldA.Add(lastString, (FieldReference) instr.Operand);
+			}
+		}
+
+		lastString = "";
+		foreach (var instr in method150B.CecilMethod.Body.Instructions) {
+			if (instr.OpCode == OpCodes.Ldstr) {
+				lastString = (string) instr.Operand;
+			} else if (instr.OpCode == OpCodes.Stsfld) {
+				// TODO validate field?
+				if (lastString == "") continue;
+				glMethodNameToFieldB.Add(lastString, (FieldReference) instr.Operand);
+			}
+		}
+
+		var count = 0;
+		foreach (var data in glMethodNameToFieldA.Keys.Union(glMethodNameToFieldB.Keys)) {
+			if (!glMethodNameToFieldA.ContainsKey(data)) {
+				Console.WriteLine($"Unmatched gl function in assembly B: {glMethodNameToFieldB[data].FullName}");
+			} else if (!glMethodNameToFieldB.ContainsKey(data)) {
+				Console.WriteLine($"Unmatched gl function in assembly A: {GetIntermediaryForFieldA(glMethodNameToFieldA[data])} ({glMethodNameToFieldA[data].FullName})");
+			} else {
+				var delegateA = matcher.env.EnvA.GetCreateTypeInstance(glMethodNameToFieldA[data].FieldType);
+				var delegateB = matcher.env.EnvB.GetCreateTypeInstance(glMethodNameToFieldB[data].FieldType);
+				matcher.MatchType(delegateA, delegateB);
+				matcher.MatchField(
+						class111A.GetField(glMethodNameToFieldA[data].Name, glMethodNameToFieldA[data].FieldType.Name)!,
+						class111B.GetField(glMethodNameToFieldB[data].Name, glMethodNameToFieldB[data].FieldType.Name)!);
+				count++;
+			}
+		}
+
+		// A decent portion of enums seem to be indistinguishable and unused, so we just match by position and hope for the best :))
+		List<TypeInstance> enumsA = [];
+		List<TypeInstance> enumsB = [];
+
+		foreach (var nested in class111A.nestedTypes) {
+			if (nested.CecilType.IsEnum) enumsA.Add(nested);
+		}
+		foreach (var nested in class111B.nestedTypes) {
+			if (nested.CecilType.IsEnum) enumsB.Add(nested);
+		}
+
+		if (enumsA.Count != enumsB.Count) throw new Exception("expected identical enum count while matching class_111");
+
+		foreach (var (enumA, enumB) in enumsA.Zip(enumsB)) {
+			matcher.MatchType(enumA, enumB);
+		}
+
+		Console.WriteLine($"Matched {count} fields/delegates and {enumsA.Count} enums in class_111");
 	}
 }
