@@ -22,6 +22,7 @@ public class SpecialCases {
 		MatchClass9();
 		MatchClass111();
 		IgnoreSDL();
+		IgnoreUnusedNonnestedEnums();
 	}
 
 	private TypeInstance FindTypeAFromIntermediary(string intermediaryName) {
@@ -324,5 +325,29 @@ public class SpecialCases {
 		matcher.env.EnvA.types["SDL2.SDL"].MarkIgnoredRecursive();
 		matcher.env.EnvB.types["SDL2.SDL"].MarkIgnoredRecursive();
 		Console.WriteLine("Ignoring SDL");
+	}
+
+	private bool CheckEnumUnused(TypeInstance cls) {
+		// TODO this could mark enums as unused even if they appear as local variables in methods. Probably fine?
+		return cls.fieldTypeRefs.Count == 0 && cls.methodTypeRefs.Count == 0;
+	}
+
+	private void IgnoreUnusedNonnestedEnums() {
+		var enumIgnoreCountA = 0;
+		foreach (var cls in matcher.env.EnvA.types.Values) {
+			if (!cls.IsIgnored() && cls.outerType == null && cls.GetSubgroup() == TypeSubgroup.Enum && CheckEnumUnused(cls)) {
+				cls.MarkIgnored();
+				enumIgnoreCountA++;
+			}
+		}
+		var enumIgnoreCountB = 0;
+		foreach (var cls in matcher.env.EnvB.types.Values) {
+			if (!cls.IsIgnored() && cls.outerType == null && cls.GetSubgroup() == TypeSubgroup.Enum && CheckEnumUnused(cls)) {
+				cls.MarkIgnored();
+				enumIgnoreCountB++;
+			}
+		}
+
+		Console.WriteLine($"Ignoring {enumIgnoreCountA} (A)/{enumIgnoreCountB} (B) unused non-nested enums");
 	}
 }
