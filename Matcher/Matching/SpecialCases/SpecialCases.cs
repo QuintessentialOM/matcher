@@ -21,6 +21,7 @@ public class SpecialCases {
 		MatchTextures();
 		MatchClass9();
 		MatchClass111();
+		IgnoreSDL();
 	}
 
 	private TypeInstance FindTypeAFromIntermediary(string intermediaryName) {
@@ -316,5 +317,12 @@ public class SpecialCases {
 		}
 
 		Console.WriteLine($"Matched {count} fields/delegates and {enumCount} enums, skipped {enumIgnoreCountA} (A)/{enumIgnoreCountB} (B) enums in class_111");
+	}
+
+	private void IgnoreSDL() {
+		// We ignore SDL for now, since most of it is unobfuscated anyway, and the obfuscated parts are awkward to match
+		matcher.env.EnvA.types["SDL2.SDL"].MarkIgnoredRecursive();
+		matcher.env.EnvB.types["SDL2.SDL"].MarkIgnoredRecursive();
+		Console.WriteLine("Ignoring SDL");
 	}
 }
