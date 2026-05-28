@@ -268,6 +268,7 @@ public class SpecialCases {
 		}
 
 		var count = 0;
+		var enumCount = 0;
 		foreach (var data in glMethodNameToFieldA.Keys.Union(glMethodNameToFieldB.Keys)) {
 			if (!glMethodNameToFieldA.ContainsKey(data)) {
 				Console.WriteLine($"Unmatched gl function in assembly B: {glMethodNameToFieldB[data].FullName}");
@@ -281,26 +282,39 @@ public class SpecialCases {
 						class111A.GetField(glMethodNameToFieldA[data].Name, glMethodNameToFieldA[data].FieldType.Name)!,
 						class111B.GetField(glMethodNameToFieldB[data].Name, glMethodNameToFieldB[data].FieldType.Name)!);
 				count++;
+
+				var invokeA = delegateA.GetMethod("Invoke", null);
+				var invokeB = delegateA.GetMethod("Invoke", null);
+				foreach (var (paramA, paramB) in invokeA!.args.Zip(invokeB!.args)) {
+					if (!paramA.paramType.HasMatch() && !paramB.paramType.HasMatch() && paramA.paramType.GetSubgroup() == TypeSubgroup.Enum && paramB.paramType.GetSubgroup() == TypeSubgroup.Enum) {
+						matcher.MatchType(paramA.paramType, paramB.paramType);
+						enumCount++;
+					}
+				}
+				if (!invokeA.returnType.HasMatch() && !invokeB.returnType.HasMatch() && invokeA.returnType.GetSubgroup() == TypeSubgroup.Enum && invokeB.returnType.GetSubgroup() == TypeSubgroup.Enum) {
+					matcher.MatchType(invokeA.returnType, invokeB.returnType);
+					enumCount++;
+				}
 			}
 		}
 
-		// A decent portion of enums seem to be indistinguishable and unused, so we just match by position and hope for the best :))
-		List<TypeInstance> enumsA = [];
-		List<TypeInstance> enumsB = [];
+		// Exclude unused enums from matching
 
+		var enumIgnoreCountA = 0;
 		foreach (var nested in class111A.nestedTypes) {
-			if (nested.CecilType.IsEnum) enumsA.Add(nested);
+			if (!nested.IsIgnored() && nested.GetSubgroup() == TypeSubgroup.Enum) {
+				nested.MarkIgnored();
+				enumIgnoreCountA++;
+			}
 		}
+		var enumIgnoreCountB = 0;
 		foreach (var nested in class111B.nestedTypes) {
-			if (nested.CecilType.IsEnum) enumsB.Add(nested);
+			if (!nested.IsIgnored() && nested.GetSubgroup() == TypeSubgroup.Enum) {
+				nested.MarkIgnored();
+				enumIgnoreCountB++;
+			}
 		}
 
-		if (enumsA.Count != enumsB.Count) throw new Exception("expected identical enum count while matching class_111");
-
-		foreach (var (enumA, enumB) in enumsA.Zip(enumsB)) {
-			matcher.MatchType(enumA, enumB);
-		}
-
-		Console.WriteLine($"Matched {count} fields/delegates and {enumsA.Count} enums in class_111");
+		Console.WriteLine($"Matched {count} fields/delegates and {enumCount} enums, skipped {enumIgnoreCountA} (A)/{enumIgnoreCountB} (B) enums in class_111");
 	}
 }

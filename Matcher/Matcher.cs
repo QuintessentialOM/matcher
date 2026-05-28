@@ -1269,6 +1269,7 @@ public class Matcher {
 		foreach (TypeInstance cls in env.EnvA.types.Values) {
 			if (inputsOnly && cls.CecilType == null) continue;
 			if (cls.GetSubgroup() == TypeSubgroup.GenericInstance) continue; // generic instance matching doesn't actually matter
+			if (cls.IsIgnored()) continue;
 
 			totalClassCount++;
 			if (cls.HasMatch()) matchedClassCount++;

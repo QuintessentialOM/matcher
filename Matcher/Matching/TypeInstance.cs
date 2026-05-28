@@ -42,6 +42,8 @@ public class TypeInstance : MatchableMemberOrClass {
 	public readonly HashSet<MethodInstance> methodTypeRefs = [];
 	public readonly HashSet<FieldInstance> fieldTypeRefs = [];
 
+	private bool ignored = false;
+
 	// position of nested types within their outer type, and of generic params within their owner. unused on non-nested types, indicated by -1
 	public int position = -1;
 
@@ -147,5 +149,14 @@ public class TypeInstance : MatchableMemberOrClass {
 
 			return ret;
 		}
+	}
+
+	public bool IsIgnored() {
+		return ignored;
+	}
+
+	public void MarkIgnored() {
+		ignored = true;
+		SetMatchable(false);
 	}
 }

@@ -50,7 +50,7 @@ public static class MatcherMain {
 		foreach (var cls in matcher.env.EnvA.types.Values) {
 			if (cls.CecilType == null) continue;
 			if (cls.CecilTypeReference.IsPointer || cls.CecilTypeReference.IsGenericInstance) continue;
-			if (!cls.HasMatch()) Console.WriteLine($"unmatched {classObfToInter.GetValueOrDefault(cls.CecilTypeReference.Name)?.ClassNameB ?? "???"} ({cls.CecilTypeReference.FullName})");
+			if (!cls.IsIgnored() && !cls.HasMatch()) Console.WriteLine($"unmatched {classObfToInter.GetValueOrDefault(cls.CecilTypeReference.Name)?.ClassNameB ?? "???"} ({cls.CecilTypeReference.FullName})");
 		}
 		// // index by name instead of fullname
 		// Dictionary<string, TypeInstance?> matcherClassInstances = matcher.env.EnvA.types.Values.ToDictionary(typeInstance => typeInstance.GetName())!;
