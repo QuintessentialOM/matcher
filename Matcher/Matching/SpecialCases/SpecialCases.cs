@@ -2,6 +2,7 @@ using System.Collections;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Matcher.Matching;
+using Matcher.Matching.Classifier;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
@@ -21,6 +22,7 @@ public class SpecialCases {
 		MatchTextures();
 		MatchClass9();
 		MatchClass111();
+		MatchClass125AndClass213();
 		IgnoreSDL();
 		IgnoreUnusedNonnestedEnums();
 	}
@@ -33,6 +35,11 @@ public class SpecialCases {
 	private MethodInstance FindMethodAFromIntermediary(TypeInstance typeA, string intermediaryName) {
 		var obfName = mappingsA.Classes.Where(cls => cls.ClassNameA == typeA.CecilTypeReference.Name).Single().Methods.Where(method => method.MethodNameB == intermediaryName).Single().MethodNameA;
 		return typeA.GetMethod(obfName, null)!;
+	}
+
+	private FieldInstance FindFieldAFromIntermediary(TypeInstance typeA, string intermediaryName) {
+		var obfName = mappingsA.Classes.Where(cls => cls.ClassNameA == typeA.CecilTypeReference.Name).Single().Fields.Where(field => field.FieldNameB == intermediaryName).Single().FieldNameA;
+		return typeA.GetField(obfName, null)!;
 	}
 
 	private string GetIntermediaryForTypeA(TypeInstance typeInstance) {
@@ -318,6 +325,87 @@ public class SpecialCases {
 		}
 
 		Console.WriteLine($"Matched {count} fields/delegates and {enumCount} enums, skipped {enumIgnoreCountA} (A)/{enumIgnoreCountB} (B) enums in class_111");
+	}
+
+	private void MatchClass125AndClass213() {
+		// These classes fail to match automatically because they're identical and have similar usages;
+		// we distinguish them by class_300.field_2332 being set to a different value in class_300.MoveNext() depending on which is constructed (constructor matches .ctor(CampaignItem))
+		const string class300Intermediary = "class_300";
+		const string field2332Intermediary = "field_2332";
+		// const string field2342Intermediary = "field_2342";
+		var class300A = FindTypeAFromIntermediary(class300Intermediary);
+		var field2332A = FindFieldAFromIntermediary(class300A, field2332Intermediary);
+		// var field2342A = FindFieldAFromIntermediary(class300A, field2342Intermediary);
+		
+		var class300B = class300A.GetMatch();
+		var field2332B = field2332A.GetMatch();
+		// var field2342B = field2342A.GetMatch();
+
+		if (class300B == null) throw new Exception("Failed to get match for class_300");
+		if (field2332B == null) throw new Exception("Failed to get match for field_2332");
+		// if (field2342B == null) throw new Exception("Failed to get match for field_2342");
+
+		var getNextA = class300A.GetMethod("MoveNext", null);
+		var getNextB = class300B.GetMethod("MoveNext", null);
+
+		var constructedTypesBySetFieldValueA = new Dictionary<int, TypeReference>();
+		var constructedTypesBySetFieldValueB = new Dictionary<int, TypeReference>();
+
+		TypeReference? lastConstructedType = null;
+		int? lastIntConstant = null;
+		foreach (var instr in getNextA.CecilMethod.Body.Instructions) {
+			var maybeIntValue = ClassifierUtil.getLdcI4Value(instr);
+			if (instr.OpCode == OpCodes.Newobj) {
+				var constructor = (MethodReference) instr.Operand;
+				if (constructor.Parameters.Count == 1 && constructor.Parameters[0].ParameterType.Name == "CampaignItem") {
+					lastConstructedType = constructor.DeclaringType;
+				}
+			} else if (maybeIntValue != null) {
+				lastIntConstant = maybeIntValue;
+			} else if (instr.OpCode == OpCodes.Stfld && ((FieldReference) instr.Operand).Name == field2332A.GetName()) {
+				if (lastConstructedType != null && lastIntConstant != null) {
+					constructedTypesBySetFieldValueA.Add((int) lastIntConstant, lastConstructedType);
+				}
+				lastConstructedType = null;
+				lastIntConstant = null;
+			}
+		}
+
+		lastConstructedType = null;
+		lastIntConstant = null;
+		foreach (var instr in getNextB.CecilMethod.Body.Instructions) {
+			var maybeIntValue = ClassifierUtil.getLdcI4Value(instr);
+			if (instr.OpCode == OpCodes.Newobj) {
+				var constructor = (MethodReference) instr.Operand;
+				if (constructor.Parameters.Count == 1 && constructor.Parameters[0].ParameterType.Name == "CampaignItem") {
+					lastConstructedType = constructor.DeclaringType;
+				}
+			} else if (maybeIntValue != null) {
+				lastIntConstant = maybeIntValue;
+			} else if (instr.OpCode == OpCodes.Stfld && ((FieldReference) instr.Operand).Name == field2332B.GetName()) {
+				if (lastConstructedType != null && lastIntConstant != null) {
+					constructedTypesBySetFieldValueB.Add((int) lastIntConstant, lastConstructedType);
+				}
+				lastConstructedType = null;
+				lastIntConstant = null;
+			}
+		}
+
+		var count = 0;
+		foreach (var intConst in constructedTypesBySetFieldValueA.Keys.Union(constructedTypesBySetFieldValueB.Keys)) {
+			if (!constructedTypesBySetFieldValueA.ContainsKey(intConst)) {
+				Console.WriteLine($"Unmatched type in assembly B: {constructedTypesBySetFieldValueB[intConst].FullName}");
+			} else if (!constructedTypesBySetFieldValueB.ContainsKey(intConst)) {
+				Console.WriteLine($"Unmatched type in assembly A: {GetIntermediaryForTypeA(constructedTypesBySetFieldValueA[intConst])} ({constructedTypesBySetFieldValueA[intConst].FullName})");
+			} else {
+				matcher.MatchType(
+					matcher.env.EnvA.GetCreateTypeInstance(constructedTypesBySetFieldValueA[intConst]),
+					matcher.env.EnvB.GetCreateTypeInstance(constructedTypesBySetFieldValueB[intConst])
+				);
+				count++;
+			}
+		}
+		Console.WriteLine($"Matched {count} of class_125 and class_213");
 	}
 
 	private void IgnoreSDL() {

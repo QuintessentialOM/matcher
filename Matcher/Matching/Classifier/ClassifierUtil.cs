@@ -832,30 +832,9 @@ public class ClassifierUtil {
 	public static void ExtractNumbers(MethodDefinition method, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
 		if(method.Body != null && method.Body.Instructions != null) {
 			foreach (var instr in method.Body.Instructions) {
-				if (instr.OpCode == OpCodes.Ldc_I4_M1) {
-					ints.Add(-1);
-				} else if (instr.OpCode == OpCodes.Ldc_I4_0) {
-					ints.Add(0);
-				} else if (instr.OpCode == OpCodes.Ldc_I4_1) {
-					ints.Add(1);
-				} else if (instr.OpCode == OpCodes.Ldc_I4_2) {
-					ints.Add(2);
-				} else if (instr.OpCode == OpCodes.Ldc_I4_3) {
-					ints.Add(3);
-				} else if (instr.OpCode == OpCodes.Ldc_I4_4) {
-					ints.Add(4);
-				} else if (instr.OpCode == OpCodes.Ldc_I4_5) {
-					ints.Add(5);
-				} else if (instr.OpCode == OpCodes.Ldc_I4_6) {
-					ints.Add(6);
-				} else if (instr.OpCode == OpCodes.Ldc_I4_7) {
-					ints.Add(7);
-				} else if (instr.OpCode == OpCodes.Ldc_I4_8) {
-					ints.Add(8);
-				} else if (instr.OpCode == OpCodes.Ldc_I4_S ) {
-					ints.Add((sbyte) instr.Operand);
-				} else if (instr.OpCode == OpCodes.Ldc_I4) {
-					ints.Add((int) instr.Operand);
+				var intValue = getLdcI4Value(instr);
+				if (intValue != null) {
+					ints.Add((int) intValue);
 				} else if (instr.OpCode == OpCodes.Ldc_I8) {
 					longs.Add((long) instr.Operand);
 				} else if (instr.OpCode == OpCodes.Ldc_R4) {
@@ -865,6 +844,35 @@ public class ClassifierUtil {
 				}
 			}
 		}
+	}
+
+	public static int? getLdcI4Value(Instruction instr) {
+		if (instr.OpCode == OpCodes.Ldc_I4_M1) {
+			return -1;
+		} else if (instr.OpCode == OpCodes.Ldc_I4_0) {
+			return 0;
+		} else if (instr.OpCode == OpCodes.Ldc_I4_1) {
+			return 1;
+		} else if (instr.OpCode == OpCodes.Ldc_I4_2) {
+			return 2;
+		} else if (instr.OpCode == OpCodes.Ldc_I4_3) {
+			return 3;
+		} else if (instr.OpCode == OpCodes.Ldc_I4_4) {
+			return 4;
+		} else if (instr.OpCode == OpCodes.Ldc_I4_5) {
+			return 5;
+		} else if (instr.OpCode == OpCodes.Ldc_I4_6) {
+			return 6;
+		} else if (instr.OpCode == OpCodes.Ldc_I4_7) {
+			return 7;
+		} else if (instr.OpCode == OpCodes.Ldc_I4_8) {
+			return 8;
+		} else if (instr.OpCode == OpCodes.Ldc_I4_S ) {
+			return (sbyte) instr.Operand;
+		} else if (instr.OpCode == OpCodes.Ldc_I4) {
+			return (int) instr.Operand;
+		}
+		return null;
 	}
 
 	public static void HandleNumberValue(object number, ISet<int> ints, ISet<long> longs, ISet<float> floats, ISet<double> doubles) {
