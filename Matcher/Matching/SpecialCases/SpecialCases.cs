@@ -25,6 +25,7 @@ public class SpecialCases {
 		MatchClass125AndClass213();
 		IgnoreSDL();
 		IgnoreUnusedNonnestedEnums();
+		MatchUnmatchedLambdaGeneratedClasses();
 	}
 
 	private TypeInstance FindTypeAFromIntermediary(string intermediaryName) {
@@ -437,5 +438,175 @@ public class SpecialCases {
 		}
 
 		Console.WriteLine($"Ignoring {enumIgnoreCountA} (A)/{enumIgnoreCountB} (B) unused non-nested enums");
+	}
+
+	private bool IsMaybeLambdaGeneratedClass(TypeDefinition cls) {
+		return cls.IsClass && cls.IsNested && cls.IsSealed && cls.BaseType.FullName == "System.Object";
+	}
+
+	private void MatchUnmatchedLambdaGeneratedClasses() {
+		// The same lambda appearing twice in the same method seems to break matching, since two lambda classes are generated
+		// To handle this we match lambdas by the method they're constructed from, and the order in which they're constructed in the method.
+		// If the lambda generated class has multiple methods (why??), we similarly match those by where they're called from, and the order in which they're called if called from the same method.
+		// This special-case is a bit of a disaster but oh well.
+		Dictionary<TypeInstance, HashSet<TypeInstance>> lambdasByContainingClassA = [];
+		Dictionary<TypeInstance, HashSet<TypeInstance>> lambdasByContainingClassB = [];
+		foreach (var cls in matcher.env.EnvA.types.Values) {
+			if (cls.IsMatchable() && !cls.HasMatch() && cls.CecilType != null && IsMaybeLambdaGeneratedClass(cls.CecilType)) {
+				var containingCls = cls.outerType!;
+				if (!lambdasByContainingClassA.ContainsKey(containingCls)) {
+					lambdasByContainingClassA[containingCls] = [];
+				}
+				lambdasByContainingClassA[containingCls].Add(cls);
+			}
+		}
+
+		foreach (var cls in matcher.env.EnvB.types.Values) {
+			if (cls.IsMatchable() && !cls.HasMatch() && cls.CecilType != null && IsMaybeLambdaGeneratedClass(cls.CecilType)) {
+				var containingCls = cls.outerType!;
+				if (!lambdasByContainingClassB.ContainsKey(containingCls)) {
+					lambdasByContainingClassB[containingCls] = [];
+				}
+				lambdasByContainingClassB[containingCls].Add(cls);
+			}
+		}
+
+		HashSet<TypeInstance> visitedContainingClassesB = [];
+		HashSet<TypeInstance> skippedContainingClassesA = [];
+		HashSet<TypeInstance> skippedContainingClassesB = [];
+
+		var matchedLambdaClassCount = 0;
+		var matchedLambdaMethodsCount = 0;
+
+		foreach (var containingClsA in lambdasByContainingClassA.Keys) {
+			var containingClsB = containingClsA.GetMatch();
+			if (containingClsB == null || !lambdasByContainingClassB.ContainsKey(containingClsB)) {
+				skippedContainingClassesA.Add(containingClsA);
+				continue;
+			}
+			visitedContainingClassesB.Add(containingClsB);
+			var lambdaClassesA = lambdasByContainingClassA[containingClsA];
+			var lambdaClassesB = lambdasByContainingClassB[containingClsB];
+			
+			Dictionary<MethodInstance, HashSet<TypeInstance>> lambdasByConstructorCallSiteA = [];
+			Dictionary<MethodInstance, HashSet<TypeInstance>> lambdasByConstructorCallSiteB = [];
+
+			foreach (var lambda in lambdaClassesA) {
+				var ctor = lambda.GetMethod(".ctor", null)!;
+				if (ctor.refsIn.Count != 1) continue;
+				var ctorCallSite = ctor.refsIn.Single();
+				if (!lambdasByConstructorCallSiteA.ContainsKey(ctorCallSite)) {
+					lambdasByConstructorCallSiteA[ctorCallSite] = [];
+				}
+				lambdasByConstructorCallSiteA[ctorCallSite].Add(lambda);
+			}
+			foreach (var lambda in lambdaClassesB) {
+				var ctor = lambda.GetMethod(".ctor", null)!;
+				if (ctor.refsIn.Count != 1) continue;
+				var ctorCallSite = ctor.refsIn.Single();
+				if (!lambdasByConstructorCallSiteB.ContainsKey(ctorCallSite)) {
+					lambdasByConstructorCallSiteB[ctorCallSite] = [];
+				}
+				lambdasByConstructorCallSiteB[ctorCallSite].Add(lambda);
+			}
+
+			foreach (var constructorCallSiteA in lambdasByConstructorCallSiteA.Keys) {
+				var constructorCallSiteB = constructorCallSiteA.GetMatch();
+				if (constructorCallSiteB == null || !lambdasByConstructorCallSiteB.ContainsKey(constructorCallSiteB)) {
+					continue;
+				}
+				var lambdasA = lambdasByConstructorCallSiteA[constructorCallSiteA];
+				var lambdasB = lambdasByConstructorCallSiteB[constructorCallSiteB];
+				if (lambdasA.Count != lambdasB.Count) continue;
+				List<TypeInstance> lambdasAOrdered = [];
+				List<TypeInstance> lambdasBOrdered = [];
+				foreach (var instr in constructorCallSiteA.CecilMethod!.Body.Instructions) {
+					if (instr.OpCode == OpCodes.Newobj) {
+						var lambdaA = lambdasA.Where(cls => cls.GetId() == ((MethodReference) instr.Operand).DeclaringType.FullName).SingleOrDefault((TypeInstance?) null);
+						if (lambdaA != null && !lambdasAOrdered.Contains(lambdaA)) {
+							lambdasAOrdered.Add(lambdaA);
+						}
+					}
+				}
+				foreach (var instr in constructorCallSiteB.CecilMethod!.Body.Instructions) {
+					if (instr.OpCode == OpCodes.Newobj) {
+						var lambdaB = lambdasB.Where(cls => cls.GetId() == ((MethodReference) instr.Operand).DeclaringType.FullName).SingleOrDefault((TypeInstance?) null);
+						if (lambdaB != null && !lambdasBOrdered.Contains(lambdaB)) {
+							lambdasBOrdered.Add(lambdaB);
+						}
+					}
+				}
+				if (lambdasAOrdered.Count != lambdasA.Count || lambdasBOrdered.Count != lambdasA.Count) throw new Exception("Failed to find lambda constructor invocation");
+				foreach (var (a, b) in lambdasAOrdered.Zip(lambdasBOrdered)) {
+					matcher.MatchType(a, b);
+					matchedLambdaClassCount += 1;
+					Console.WriteLine($"Matched lambda generated class: {GetIntermediaryForTypeA(a)} ({a.CecilTypeReference.FullName}) -> {b.CecilTypeReference.FullName}");
+					if (a.methodsOrdered.Count != b.methodsOrdered.Count) continue;
+					if (a.methodsOrdered.Count == 2) {
+						matcher.MatchMethod(a.methodsOrdered.Where(m => m.GetName() != ".ctor").Single(), b.methodsOrdered.Where(m => m.GetName() != ".ctor").Single());
+						matchedLambdaMethodsCount++;
+					} else {
+						matchedLambdaMethodsCount += MatchLambdaMethodsByInvocationSite(a, b);
+					}
+				}
+			}
+		}
+		Console.WriteLine($"Matched {matchedLambdaClassCount} lambda generated classes and {matchedLambdaMethodsCount} lambda methods");
+	}
+
+	private int MatchLambdaMethodsByInvocationSite(TypeInstance lambdaA, TypeInstance lambdaB) {
+		Dictionary<MethodInstance, HashSet<MethodInstance>> methodsByCallSiteA = [];
+		Dictionary<MethodInstance, HashSet<MethodInstance>> methodsByCallSiteB = [];
+
+		var matchedLambdaMethodsCount = 0;
+
+		foreach (var method in lambdaA.methodsOrdered.Where(m => m.GetName() != ".ctor")) {
+			var methodCallSite = method.refsIn.Single();
+			if (!methodsByCallSiteA.ContainsKey(methodCallSite)) {
+				methodsByCallSiteA[methodCallSite] = [];
+			}
+			methodsByCallSiteA[methodCallSite].Add(method);
+		}
+		foreach (var method in lambdaB.methodsOrdered.Where(m => m.GetName() != ".ctor")) {
+			var methodCallSite = method.refsIn.Single();
+			if (!methodsByCallSiteB.ContainsKey(methodCallSite)) {
+				methodsByCallSiteB[methodCallSite] = [];
+			}
+			methodsByCallSiteB[methodCallSite].Add(method);
+		}
+
+		foreach (var callSiteA in methodsByCallSiteA.Keys) {
+			var callSiteB = callSiteA.GetMatch();
+			if (callSiteB == null || !methodsByCallSiteB.ContainsKey(callSiteB)) {
+				continue;
+			}
+			var methodsA = methodsByCallSiteA[callSiteA];
+			var methodsB = methodsByCallSiteB[callSiteB];
+			if (methodsA.Count != methodsB.Count) continue;
+			List<MethodInstance> methodsAOrdered = [];
+			List<MethodInstance> methodsBOrdered = [];
+			foreach (var instr in callSiteA.CecilMethod!.Body.Instructions) {
+				if (instr.Operand is MethodReference methodReference) {
+					var methodA = methodsA.Where(method => method.GetName() == methodReference.Name).SingleOrDefault((MethodInstance?) null);
+					if (methodA != null && !methodsAOrdered.Contains(methodA)) {
+						methodsAOrdered.Add(methodA);
+					}
+				}
+			}
+			foreach (var instr in callSiteB.CecilMethod!.Body.Instructions) {
+				if (instr.Operand is MethodReference methodReference) {
+					var methodB = methodsB.Where(method => method.GetName() == methodReference.Name).SingleOrDefault((MethodInstance?) null);
+					if (methodB != null && !methodsBOrdered.Contains(methodB)) {
+						methodsBOrdered.Add(methodB);
+					}
+				}
+			}
+			if (methodsAOrdered.Count != methodsA.Count || methodsBOrdered.Count != methodsA.Count) throw new Exception("Failed to find method invocation");
+			foreach (var (a, b) in methodsAOrdered.Zip(methodsBOrdered)) {
+				matcher.MatchMethod(a, b);
+				matchedLambdaMethodsCount++;
+			}
+		}
+		return matchedLambdaMethodsCount;
 	}
 }
