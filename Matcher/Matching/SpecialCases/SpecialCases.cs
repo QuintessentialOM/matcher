@@ -26,6 +26,8 @@ public class SpecialCases {
 		IgnoreSDL();
 		IgnoreUnusedNonnestedEnums();
 		MatchUnmatchedLambdaGeneratedClasses();
+		MatchAngleBracketsCInnerClassMembers();
+		MatchMiscObfInnerClassMembers();
 	}
 
 	private TypeInstance FindTypeAFromIntermediary(string intermediaryName) {
@@ -546,7 +548,7 @@ public class SpecialCases {
 						matcher.MatchMethod(a.methodsOrdered.Where(m => m.GetName() != ".ctor").Single(), b.methodsOrdered.Where(m => m.GetName() != ".ctor").Single());
 						matchedLambdaMethodsCount++;
 					} else {
-						matchedLambdaMethodsCount += MatchLambdaMethodsByInvocationSite(a, b);
+						matchedLambdaMethodsCount += MatchClassMethodsBySingleInvocationSite(a, b);
 					}
 				}
 			}
@@ -554,20 +556,58 @@ public class SpecialCases {
 		Console.WriteLine($"Matched {matchedLambdaClassCount} lambda generated classes and {matchedLambdaMethodsCount} lambda methods");
 	}
 
-	private int MatchLambdaMethodsByInvocationSite(TypeInstance lambdaA, TypeInstance lambdaB) {
+	private void MatchAngleBracketsCInnerClassMembers() {
+		// Match unmatched methods and fields on an inner class called <>c. I'm assuming it's some kind of generated class but I can't find any info on it anywhere because C# seems to have an utter dearth of documentation.
+		var typesA = matcher.env.EnvA.types.Values.Where(cls => cls.CecilTypeReference.Name == "<>c" && cls.CecilTypeReference.IsNested && cls.HasMatch());
+		var count = 0;
+		var memberCount = 0;
+		foreach (var cls in typesA) {
+			if (cls.GetMatch()!.CecilTypeReference.Name != "<>c") throw new Exception("Expected <>c class to be matched with <>c class");
+			var matched = MatchClassMethodsBySingleInvocationSite(cls, cls.GetMatch()!);
+			memberCount += matched;
+			if (matched > 0) count++;
+		}
+		Console.WriteLine($"Matched {memberCount} methods/fields on {count} inner classes named <>c");
+		// TODO fields
+	}
+
+	private void MatchMiscObfInnerClassMembers() {
+		// These might be the same kind of generated inner class as <>c but obfuscated - unsure.
+		List<string> intermediaryClassNames = ["class_143", "class_146", "class_363", "class_411"];
+		foreach (var intermediary in intermediaryClassNames) {
+			var clsA = FindTypeAFromIntermediary(intermediary);
+			if (clsA.HasMatch()) {
+				MatchClassMethodsBySingleInvocationSite(clsA, clsA.GetMatch()!);
+			}
+		}
+		// TODO fields
+	}
+
+	private int MatchClassMethodsBySingleInvocationSite(TypeInstance clsA, TypeInstance clsB) {
+		var count = MatchMethodsBySingleInvocationSite(
+			clsA.methodsOrdered.Where(m => m.GetName() != ".ctor" && m.GetName() != ".cctor" && !m.HasMatch()),
+			clsB.methodsOrdered.Where(m => m.GetName() != ".ctor" && m.GetName() != ".cctor" && !m.HasMatch())
+		);
+		if (count > 0)
+			Console.WriteLine($"Matched {count} methods on {clsA.GetName()}");
+		return count;
+	}
+
+	private int MatchMethodsBySingleInvocationSite(IEnumerable<MethodInstance> inMethodsA, IEnumerable<MethodInstance> inMethodsB) {
+		// Match methods assuming that they are each called from exactly one method
 		Dictionary<MethodInstance, HashSet<MethodInstance>> methodsByCallSiteA = [];
 		Dictionary<MethodInstance, HashSet<MethodInstance>> methodsByCallSiteB = [];
 
-		var matchedLambdaMethodsCount = 0;
+		var matchedMethodsCount = 0;
 
-		foreach (var method in lambdaA.methodsOrdered.Where(m => m.GetName() != ".ctor")) {
+		foreach (var method in inMethodsA) {
 			var methodCallSite = method.refsIn.Single();
 			if (!methodsByCallSiteA.ContainsKey(methodCallSite)) {
 				methodsByCallSiteA[methodCallSite] = [];
 			}
 			methodsByCallSiteA[methodCallSite].Add(method);
 		}
-		foreach (var method in lambdaB.methodsOrdered.Where(m => m.GetName() != ".ctor")) {
+		foreach (var method in inMethodsB) {
 			var methodCallSite = method.refsIn.Single();
 			if (!methodsByCallSiteB.ContainsKey(methodCallSite)) {
 				methodsByCallSiteB[methodCallSite] = [];
@@ -604,9 +644,9 @@ public class SpecialCases {
 			if (methodsAOrdered.Count != methodsA.Count || methodsBOrdered.Count != methodsA.Count) throw new Exception("Failed to find method invocation");
 			foreach (var (a, b) in methodsAOrdered.Zip(methodsBOrdered)) {
 				matcher.MatchMethod(a, b);
-				matchedLambdaMethodsCount++;
+				matchedMethodsCount++;
 			}
 		}
-		return matchedLambdaMethodsCount;
+		return matchedMethodsCount;
 	}
 }
