@@ -46,6 +46,7 @@ public class MethodParamInstance : Matchable {
 	}
 
 	public void SetMatch(MethodParamInstance? methodParam) {
+		if (methodParam != null && Env == methodParam.Env) throw new Exception("trying to match with method param instance in same env");
 		matchedMethodParam = methodParam;
 	}
 }

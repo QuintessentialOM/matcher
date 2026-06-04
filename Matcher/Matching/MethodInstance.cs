@@ -65,6 +65,7 @@ public class MethodInstance : MatchableMember {
 	}
 
 	public void SetMatch(MethodInstance? method) {
+		if (method != null && Env == method.Env) throw new Exception("trying to match with method instance in same env");
 		matchedMethod = method;
 		// TODO it probably shouldn't be null?
 		if (hierarchyData != null) hierarchyData!.MatchedHierarchy = matchedMethod?.hierarchyData;

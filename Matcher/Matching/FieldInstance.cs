@@ -44,6 +44,7 @@ public class FieldInstance : MatchableMember {
 	}
 
 	public void SetMatch(FieldInstance? field) {
+		if (field != null && Env == field.Env) throw new Exception("trying to match with field instance in same env");
 		matchedField = field;
 	}
 

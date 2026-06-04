@@ -93,6 +93,7 @@ public class TypeInstance : MatchableMemberOrClass {
 	}
 
 	public void SetMatch(TypeInstance? type) {
+		if (type != null && Env == type.Env) throw new Exception("trying to match with type instance in same env");
 		matchedType = type;
 	}
 
