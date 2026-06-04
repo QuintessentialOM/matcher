@@ -296,7 +296,7 @@ public class SpecialCases {
 				count++;
 
 				var invokeA = delegateA.GetMethod("Invoke", null);
-				var invokeB = delegateA.GetMethod("Invoke", null);
+				var invokeB = delegateB.GetMethod("Invoke", null);
 				foreach (var (paramA, paramB) in invokeA!.args.Zip(invokeB!.args)) {
 					if (!paramA.paramType.HasMatch() && !paramB.paramType.HasMatch() && paramA.paramType.GetSubgroup() == TypeSubgroup.Enum && paramB.paramType.GetSubgroup() == TypeSubgroup.Enum) {
 						matcher.MatchType(paramA.paramType, paramB.paramType);
