@@ -54,10 +54,10 @@ public class Matcher {
 		// step E: assign temporary names idk
 
 		foreach (TypeDefinition type in CollectNestedTypes(moduleA.Types)) {
-			envA.types[type.FullName] = new TypeInstance(envA, type, !NonObfuscatedPattern.IsMatch(type.Name));
+			envA.GetCreateTypeInstance(type);
 		}
 		foreach (TypeDefinition type in CollectNestedTypes(moduleB.Types)) {
-			envB.types[type.FullName] = new TypeInstance(envB, type, !NonObfuscatedPattern.IsMatch(type.Name));
+			envB.GetCreateTypeInstance(type);
 		}
 		// ToList to copy since we mutate the types dictionary during initialization (to add extra types not present in the ModuleDefinition itself)
 		foreach (var type in envA.types.Values.ToList()) {
@@ -158,7 +158,7 @@ public class Matcher {
 
 			foreach (var (genericPosition, genericParam) in method.GenericParameters.WithIndex()) {
 				if (genericParam.Type == GenericParameterType.Method && genericParam.DeclaringMethod.FullName == methodInstance.CecilMethod.FullName) {
-					var genericParamInstance = new TypeInstance(env, genericParam, !NonObfuscatedPattern.IsMatch(genericParam.Name));
+					var genericParamInstance = env.GetCreateTypeInstance(genericParam);
 					env.types[genericParam.FullName] = genericParamInstance;
 					methodInstance.genericParamsOrdered.Add(genericParamInstance);
 					genericParamInstance.position = genericPosition;
@@ -182,7 +182,7 @@ public class Matcher {
 		}
 		foreach (var (genericPosition, genericParam) in cls.CecilType.GenericParameters.WithIndex()) {
 			if (genericParam.DeclaringType.FullName == cls.GetId()) {
-				var genericParamInstance = new TypeInstance(env, genericParam, !NonObfuscatedPattern.IsMatch(genericParam.Name));
+				var genericParamInstance = env.GetCreateTypeInstance(genericParam);
 				env.types[genericParam.FullName] = genericParamInstance;
 				cls.genericParamsOrdered.Add(genericParamInstance);
 				genericParamInstance.position = genericPosition;
