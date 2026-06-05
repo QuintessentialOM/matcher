@@ -116,9 +116,9 @@ public class TypeInstance : MatchableMemberOrClass {
 		return TypeSubgroup.Normal;
 	}
 
-	public MethodInstance? GetMethod(string name, string? desc) {
-		if (desc != null) {
-			return methodsById!.GetValueOrDefault(MethodInstance.GetId(name, desc), null);
+	public MethodInstance? GetMethod(string name, string? fullNameOrId) {
+		if (fullNameOrId != null) {
+			return methodsById!.GetValueOrDefault(MethodInstance.GetIdFromFullName(fullNameOrId), null);
 		} else {
 			MethodInstance? ret = null;
 

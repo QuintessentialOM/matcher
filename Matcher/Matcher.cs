@@ -330,7 +330,7 @@ public class Matcher {
 		TypeInstance? cls = env.GetCreateTypeInstance(invokedMethod.DeclaringType, create);
 		if (cls == null) return null;
 
-		MethodInstance? ret = cls.GetMethod(invokedMethod.Name, null);
+		MethodInstance? ret = cls.GetMethod(invokedMethod.Name, invokedMethod.FullName);
 
 		if (ret == null && create) {
 			// TODO

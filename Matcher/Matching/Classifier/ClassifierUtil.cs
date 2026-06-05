@@ -519,19 +519,19 @@ public class ClassifierUtil {
 		// }
 	}
 
-	private static bool CompareMethods(TypeReference ownerA, string nameA, string descA, TypeReference ownerB, string nameB, string descB, MatchingEnv env) {
+	private static bool CompareMethods(TypeReference ownerA, string nameA, string? fullNameA, TypeReference ownerB, string nameB, string? fullNameB, MatchingEnv env) {
 		TypeInstance clsA = env.EnvA.types[ownerA.FullName];
 		TypeInstance clsB = env.EnvB.types[ownerB.FullName];
 
 		if (clsA == null && clsB == null) return true;
 		if (clsA == null || clsB == null) return false;
 
-		return CompareMethods(clsA, nameA, descA, clsB, nameB, descB);
+		return CompareMethods(clsA, nameA, fullNameA, clsB, nameB, fullNameB);
 	}
 
-	private static bool CompareMethods(TypeInstance ownerA, string nameA, string descA, TypeInstance ownerB, string nameB, string descB) {
-		MethodInstance? methodA = ownerA.GetMethod(nameA, descA);
-		MethodInstance? methodB = ownerB.GetMethod(nameB, descB);
+	private static bool CompareMethods(TypeInstance ownerA, string nameA, string? fullNameA, TypeInstance ownerB, string nameB, string? fullNameB) {
+		MethodInstance? methodA = ownerA.GetMethod(nameA, fullNameA);
+		MethodInstance? methodB = ownerB.GetMethod(nameB, fullNameB);
 
 		if (methodA == null && methodB == null) return true;
 		if (methodA == null || methodB == null) return false;

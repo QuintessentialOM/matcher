@@ -42,7 +42,12 @@ public class MethodInstance : MatchableMember {
 	}
 
 	public override string GetId() {
-		return CecilMethod.Name; // TODO include desc
+		return GetIdFromFullName(CecilMethod.FullName);
+	}
+
+	public static string GetIdFromFullName(string fullNameOrId) {
+		// name and args, but not return type or owning type
+		return fullNameOrId.Contains("::") ? fullNameOrId[fullNameOrId.LastIndexOf("::")..] : fullNameOrId;
 	}
 
 	public override bool IsMatchable() {
@@ -69,10 +74,6 @@ public class MethodInstance : MatchableMember {
 		matchedMethod = method;
 		// TODO it probably shouldn't be null?
 		if (hierarchyData != null) hierarchyData!.MatchedHierarchy = matchedMethod?.hierarchyData;
-	}
-
-	public static string GetId(string name, string desc) {
-		return name+desc;
 	}
 
 	public bool HasMatchedHierarchy(MethodInstance other) {

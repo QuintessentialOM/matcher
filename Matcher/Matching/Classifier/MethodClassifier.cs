@@ -226,10 +226,10 @@ public class MethodClassifier {
 			string ownerA = methodA.ContainingType.GetName();
 			string nameA = methodA.GetName();
 			// TODO descs
-			// string descA = methodA.GetDesc();
+			string idA = methodA.GetId();
 			string ownerB = methodB.ContainingType.GetName();
 			string nameB = methodB.GetName();
-			// string descB = methodB.GetDesc();
+			string idB = methodB.GetId();
 
 			int matched = 0;
 			int mismatched = 0;
@@ -256,12 +256,12 @@ public class MethodClassifier {
 					var in_ = ilA[srcIdx];
 					if (in_.Operand is not MethodReference) continue;
 
-					if (!IsSameMethod((MethodReference) in_.Operand, ownerA, nameA, /*descA*/ null, methodA, env.EnvA)) continue;
+					if (!IsSameMethod((MethodReference) in_.Operand, ownerA, nameA, idA, methodA, env.EnvA)) continue;
 
 					in_ = ilB[map[srcIdx]];
 					if (in_.Operand is not MethodReference) continue;
 
-					if (!IsSameMethod((MethodReference) in_.Operand, ownerB, nameB, /*descB*/ null, methodB, env.EnvB)) {
+					if (!IsSameMethod((MethodReference) in_.Operand, ownerB, nameB, idB, methodB, env.EnvB)) {
 						mismatched++;
 					} else {
 						matched++;
@@ -277,7 +277,7 @@ public class MethodClassifier {
 		}
 	);
 
-	private static bool IsSameMethod(MethodReference in_, string owner, string name, string desc, MethodInstance method, LocalClassEnv env) {
+	private static bool IsSameMethod(MethodReference in_, string owner, string name, string id, MethodInstance method, LocalClassEnv env) {
 		// string sOwner, sName, sDesc;
 		// bool sItf;
 
@@ -285,7 +285,7 @@ public class MethodClassifier {
 		// 	MethodInsnNode min = (MethodInsnNode) in_;
 		// 	sOwner = min.owner;
 		// 	sName = min.name;
-		// 	sDesc = min.desc;
+		// 	sDesc = min.id;
 		// 	sItf = min.itf;
 		// } else {
 		// 	InvokeDynamicInsnNode din = (InvokeDynamicInsnNode) in_;
@@ -304,8 +304,8 @@ public class MethodClassifier {
 		TypeInstance? target;
 
 		return in_.Name == name
-				// && sDesc.equals(desc)
-				&& (in_.DeclaringType.Name == owner || (target = env.types!.GetValueOrDefault(in_.DeclaringType.Name, null)) != null && target.GetMethod(name, desc) == method);
+				// && sDesc.equals(id)
+				&& (in_.DeclaringType.Name == owner || (target = env.types!.GetValueOrDefault(in_.DeclaringType.Name, null)) != null && target.GetMethod(name, id) == method);
 	}
 
 	private static bool CheckAsmNodes(MethodInstance a, MethodInstance b) {
