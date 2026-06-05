@@ -146,18 +146,23 @@ public class SpecialCases {
 
 		var typeQueue = new Queue<(TypeReference, TypeReference)>(fieldMatchCandidates.Select(pair => (pair.Key.DeclaringType, pair.Value.DeclaringType)));
 
+		// TODO this loop evaluates tree nodes multiple times since it doesn't check which have been visited already but whatever
 		while (typeQueue.Count > 0) {
-			var pair = typeQueue.Dequeue();
-			if (pair.Item1.Name == texturesClassA.CecilTypeReference.Name) {
-				if (pair.Item2.Name != texturesClassB.CecilTypeReference.Name) {
+			var (typeA, typeB) = typeQueue.Dequeue();
+			if (typeA.Name == texturesClassA.CecilTypeReference.Name) {
+				if (typeB.Name != texturesClassB.CecilTypeReference.Name) {
 					throw new Exception("Reached Textures class in one hierarchy but not the other; folder structure may have changed (TODO handle this case properly)");
 				}
 				continue;
 			}
-			if (pair.Item1.DeclaringType == null || pair.Item2.DeclaringType == null)
-				throw new Exception("Missing outer class for class; this shouldn't hpapen?");
-			typeMatchCandidates[pair.Item1] = pair.Item2;
-			typeQueue.Enqueue((pair.Item1.DeclaringType, pair.Item2.DeclaringType));
+			if (typeA.DeclaringType == null || typeB.DeclaringType == null)
+				throw new Exception("Missing outer class for class; this shouldn't happen?");
+			typeMatchCandidates[typeA] = typeB;
+			typeQueue.Enqueue((typeA.DeclaringType, typeB.DeclaringType));
+			// fields on the outer class, with type of inner class
+			var fieldA = typeA.DeclaringType.Resolve().Fields.Where(field => field.FieldType == typeA).Single();
+			var fieldB = typeB.DeclaringType.Resolve().Fields.Where(field => field.FieldType == typeB).Single();
+			fieldMatchCandidates[fieldA] = fieldB;
 		}
 
 		// match classes first
