@@ -1,3 +1,4 @@
+using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
@@ -121,8 +122,17 @@ public class FieldClassifier {
 	private static readonly AbstractClassifier initValue = new("init value", (fieldA, fieldB, env) => {
 			if (!CheckAsmNodes(fieldA, fieldB)) return CompareAsmNodes(fieldA, fieldB);
 
-			object valA = fieldA.CecilField!.Constant;
-			object valB = fieldB.CecilField!.Constant;
+			// lazy way of comparing byte arrays - just convert to hexadecimal strings
+			string byteArrayA = fieldA.CecilField!.InitialValue == null ? "" : BitConverter.ToString(fieldA.CecilField!.InitialValue);
+			string byteArrayB = fieldB.CecilField!.InitialValue == null ? "" : BitConverter.ToString(fieldB.CecilField!.InitialValue);
+
+			if (byteArrayA != "" || byteArrayB != "") {
+				if (byteArrayA == "" || byteArrayB == "") return 0;
+				return byteArrayA == byteArrayB ? 1 : 0;
+			}
+
+			object? valA = fieldA.CecilField!.Constant ?? fieldA.TryFindFieldInitValue();
+			object? valB = fieldB.CecilField!.Constant ?? fieldB.TryFindFieldInitValue();
 
 			if (valA == null && valB == null) return 1;
 			if (valA == null || valB == null) return 0;
