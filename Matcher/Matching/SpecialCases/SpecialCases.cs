@@ -562,8 +562,10 @@ public class SpecialCases {
 		var count = 0;
 		var memberCount = 0;
 		foreach (var cls in typesA) {
-			if (cls.GetMatch()!.CecilTypeReference.Name != "<>c") throw new Exception("Expected <>c class to be matched with <>c class");
+			if (Matcher.assumeBothOrNoneObfuscated && cls.GetMatch()!.CecilTypeReference.Name != "<>c")
+				throw new Exception($"Expected <>c class to be matched with <>c class, but {cls.CecilTypeReference.FullName} was matched with {cls.GetMatch()!.CecilTypeReference.FullName}");
 			var matched = MatchClassMethodsBySingleInvocationSite(cls, cls.GetMatch()!);
+			matched += MatchClassFieldsBySingleReadSite(cls, cls.GetMatch()!);
 			memberCount += matched;
 			if (matched > 0) count++;
 		}
@@ -578,6 +580,7 @@ public class SpecialCases {
 			var clsA = FindTypeAFromIntermediary(intermediary);
 			if (clsA.HasMatch()) {
 				MatchClassMethodsBySingleInvocationSite(clsA, clsA.GetMatch()!);
+				MatchClassFieldsBySingleReadSite(clsA, clsA.GetMatch()!);
 			}
 		}
 		// TODO fields
@@ -592,6 +595,17 @@ public class SpecialCases {
 			Console.WriteLine($"Matched {count} methods on {clsA.GetName()}");
 		return count;
 	}
+
+	private int MatchClassFieldsBySingleReadSite(TypeInstance clsA, TypeInstance clsB) {
+		var count = MatchFieldBySingleReadSite(
+			clsA.fieldsOrdered.Where(f => !f.HasMatch()),
+			clsB.fieldsOrdered.Where(f => !f.HasMatch())
+		);
+		if (count > 0)
+			Console.WriteLine($"Matched {count} fields on {clsA.GetName()}");
+		return count;
+	}
+
 
 	private int MatchMethodsBySingleInvocationSite(IEnumerable<MethodInstance> inMethodsA, IEnumerable<MethodInstance> inMethodsB) {
 		// Match methods assuming that they are each called from exactly one method
@@ -648,5 +662,62 @@ public class SpecialCases {
 			}
 		}
 		return matchedMethodsCount;
+	}
+
+	private int MatchFieldBySingleReadSite(IEnumerable<FieldInstance> inFieldsA, IEnumerable<FieldInstance> inFieldsB) {
+		// Match fields assuming that they are each read from exactly one method
+		Dictionary<MethodInstance, HashSet<FieldInstance>> fieldsByReadSiteA = [];
+		Dictionary<MethodInstance, HashSet<FieldInstance>> fieldsByReadSiteB = [];
+
+		var matchedFieldsCount = 0;
+
+		foreach (var field in inFieldsA) {
+			var fieldReadSite = field.readRefs.Single();
+			if (!fieldsByReadSiteA.ContainsKey(fieldReadSite)) {
+				fieldsByReadSiteA[fieldReadSite] = [];
+			}
+			fieldsByReadSiteA[fieldReadSite].Add(field);
+		}
+		foreach (var field in inFieldsB) {
+			var fieldReadSite = field.readRefs.Single();
+			if (!fieldsByReadSiteB.ContainsKey(fieldReadSite)) {
+				fieldsByReadSiteB[fieldReadSite] = [];
+			}
+			fieldsByReadSiteB[fieldReadSite].Add(field);
+		}
+
+		foreach (var callSiteA in fieldsByReadSiteA.Keys) {
+			var callSiteB = callSiteA.GetMatch();
+			if (callSiteB == null || !fieldsByReadSiteB.ContainsKey(callSiteB)) {
+				continue;
+			}
+			var fieldsA = fieldsByReadSiteA[callSiteA];
+			var fieldsB = fieldsByReadSiteB[callSiteB];
+			if (fieldsA.Count != fieldsB.Count) continue;
+			List<FieldInstance> fieldsAOrdered = [];
+			List<FieldInstance> fieldsBOrdered = [];
+			foreach (var instr in callSiteA.CecilMethod!.Body.Instructions) {
+				if ((instr.OpCode == OpCodes.Ldfld || instr.OpCode == OpCodes.Ldsfld) && instr.Operand is FieldReference fieldReference) {
+					var fieldA = fieldsA.Where(field => field.GetName() == fieldReference.Name).SingleOrDefault((FieldInstance?) null);
+					if (fieldA != null && !fieldsAOrdered.Contains(fieldA)) {
+						fieldsAOrdered.Add(fieldA);
+					}
+				}
+			}
+			foreach (var instr in callSiteB.CecilMethod!.Body.Instructions) {
+				if ((instr.OpCode == OpCodes.Ldfld || instr.OpCode == OpCodes.Ldsfld) && instr.Operand is FieldReference fieldReference) {
+					var fieldB = fieldsB.Where(field => field.GetName() == fieldReference.Name).SingleOrDefault((FieldInstance?) null);
+					if (fieldB != null && !fieldsBOrdered.Contains(fieldB)) {
+						fieldsBOrdered.Add(fieldB);
+					}
+				}
+			}
+			if (fieldsAOrdered.Count != fieldsA.Count || fieldsBOrdered.Count != fieldsA.Count) throw new Exception("Failed to find field read");
+			foreach (var (a, b) in fieldsAOrdered.Zip(fieldsBOrdered)) {
+				matcher.MatchField(a, b);
+				matchedFieldsCount++;
+			}
+		}
+		return matchedFieldsCount;
 	}
 }
