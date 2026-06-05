@@ -23,6 +23,7 @@ public class SpecialCases {
 		MatchClass9();
 		MatchClass111();
 		MatchClass125AndClass213();
+		MatchSteamCallbacks();
 		IgnoreSDL();
 		IgnoreUnusedNonnestedEnums();
 		MatchUnmatchedLambdaGeneratedClasses();
@@ -414,6 +415,42 @@ public class SpecialCases {
 			}
 		}
 		Console.WriteLine($"Matched {count} of class_125 and class_213");
+	}
+
+	private void MatchSteamCallbacks() {
+		// Match steam callback fields by their generic parameter
+		// TODO this probably wouldn't be necessary if we were handling generics in a less hacky way
+		var steamA = matcher.env.EnvA.types["Steam"];
+		var steamB = matcher.env.EnvB.types["Steam"];
+
+		var steamworksCallbackA = matcher.env.EnvA.types["Steamworks.Callback`1"];
+		var steamworksCallbackB = matcher.env.EnvB.types["Steamworks.Callback`1"];
+
+		var fieldsByGenericParamA = new Dictionary<string, FieldReference>();
+		var fieldsByGenericParamB = new Dictionary<string, FieldReference>();
+
+		foreach (var field in steamA.CecilType!.Fields) {
+			if (!field.FieldType.IsGenericInstance || field.FieldType.GetElementType().FullName != steamworksCallbackA.CecilTypeReference.FullName) continue;
+			fieldsByGenericParamA.Add(((GenericInstanceType) field.FieldType).GenericArguments[0].FullName, field);
+		}
+		foreach (var field in steamB.CecilType!.Fields) {
+			if (!field.FieldType.IsGenericInstance || field.FieldType.GetElementType().FullName != steamworksCallbackB.CecilTypeReference.FullName) continue;
+			fieldsByGenericParamB.Add(((GenericInstanceType) field.FieldType).GenericArguments[0].FullName, field);
+		}
+		var count = 0;
+		foreach (var genericParam in fieldsByGenericParamA.Keys.Union(fieldsByGenericParamB.Keys)) {
+			if (!fieldsByGenericParamA.ContainsKey(genericParam)) {
+				Console.WriteLine($"Unmatched field in assembly B: {fieldsByGenericParamB[genericParam].FullName}");
+			} else if (!fieldsByGenericParamB.ContainsKey(genericParam)) {
+				Console.WriteLine($"Unmatched field in assembly A: {GetIntermediaryForFieldA(fieldsByGenericParamA[genericParam])} ({fieldsByGenericParamA[genericParam].FullName})");
+			} else {
+				matcher.MatchField(
+						steamA.GetField(fieldsByGenericParamA[genericParam].Name, fieldsByGenericParamA[genericParam].FieldType.Name)!,
+						steamB.GetField(fieldsByGenericParamB[genericParam].Name, fieldsByGenericParamB[genericParam].FieldType.Name)!);
+				count++;
+			}
+		}
+		Console.WriteLine($"Matched {count} callback fields on Steam");
 	}
 
 	private void IgnoreSDL() {
