@@ -24,7 +24,7 @@ public class ClassifierUtil {
 		if (nameObfA && nameObfB) { // both obf
 			return true;
 		} else if (nameObfA != nameObfB) { // one obf
-			return Matcher.assumeBothOrNoneObfuscated;
+			return !Matcher.assumeBothOrNoneObfuscated;
 		} else { // neither obf
 			return a.GetName().Equals(b.GetName());
 		}

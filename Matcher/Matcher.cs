@@ -11,7 +11,8 @@ using Mono.Cecil.Cil;
 namespace Matcher;
 
 public class Matcher {
-	public static readonly Regex NonObfuscatedPattern = new("^[a-zA-Z_\\`][a-zA-Z0-9_\\`]*(\\[])*$");
+	// Matches normal type/member names and also `<>c`, since some generated classes are named `<>c`
+	public static readonly Regex NonObfuscatedPattern = new("^([a-zA-Z_\\`][a-zA-Z0-9_\\`]*(\\[])*|<>c)$");
 
 	public MatchingEnv env;
 	readonly LocalClassEnv envA;
@@ -796,13 +797,14 @@ public class Matcher {
 
 	private const double absMethodAutoMatchThreshold = 0.8;
 	private const double relMethodAutoMatchThreshold = 0.075;
+	// TODO these 0.03 rel thresholds are probably matching too aggressively but without it some things will just fail to match even if unchanged
 	private const double absFieldAutoMatchThreshold = 0.8;
-	private const double relFieldAutoMatchThreshold = 0.075;
+	private const double relFieldAutoMatchThreshold = 0.03;
 	private const double absMethodArgAutoMatchThreshold = 0.8;
-	private const double relMethodArgAutoMatchThreshold = 0.075;
+	private const double relMethodArgAutoMatchThreshold = 0.03;
 	private const double absMethodVarAutoMatchThreshold = 0.8;
 	private const double relMethodVarAutoMatchThreshold = 0.075;
-	public const bool assumeBothOrNoneObfuscated = true; // <-- I *think* it's safe to assume this?
+	public const bool assumeBothOrNoneObfuscated = false; // evidently not always true in general; the Editor class was unobfuscated in the old modding version but is obfuscated in newer versions
 
 	private const double minAbsMatchThreshold = 0.6;
 	private const double minRelMatchThreshold = 0.04;
