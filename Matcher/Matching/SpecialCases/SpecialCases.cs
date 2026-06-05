@@ -22,6 +22,7 @@ public class SpecialCases {
 		MatchTextures();
 		MatchClass9();
 		MatchClass111();
+		MatchClass246AndClass247();
 		MatchClass125AndClass213();
 		MatchSteamCallbacks();
 		IgnoreSDL();
@@ -64,6 +65,17 @@ public class SpecialCases {
 		if (cls == null) return "???";
 		var fieldName = cls.Fields.Where(field => field.FieldNameA == fieldReference.Name).SingleOrDefault((FieldMapping?) null);
 		return fieldName?.FieldNameB ?? "???";
+	}
+
+	private string GetIntermediaryForMethodA(MethodInstance methodInstance) {
+		return GetIntermediaryForMethodA(methodInstance.CecilMethod);
+	}
+
+	private string GetIntermediaryForMethodA(MethodReference methodReference) {
+		var cls = mappingsA.Classes.Where(cls => cls.ClassNameA == methodReference.DeclaringType.Name).SingleOrDefault((ClassMapping?) null);
+		if (cls == null) return "???";
+		var methodName = cls.Methods.Where(method => method.MethodNameA == methodReference.Name).SingleOrDefault((MethodMapping?) null);
+		return methodName?.MethodNameB ?? "???";
 	}
 
 	private void MatchTextures() {
@@ -334,6 +346,83 @@ public class SpecialCases {
 		}
 
 		Console.WriteLine($"Matched {count} fields/delegates and {enumCount} enums, skipped {enumIgnoreCountA} (A)/{enumIgnoreCountB} (B) enums in class_111");
+	}
+
+	private void MatchClass246AndClass247() {
+		// Class that wraps D3D11 methods
+		const string class246Intermediary = "class_246";
+		// Class with bindings to D3D11 methods; inner class of the above class
+		const string class247Intermediary = "class_247";
+
+		var class246A = FindTypeAFromIntermediary(class246Intermediary);
+		var class246B = class246A.GetMatch() ?? throw new Exception("class_246 match not found");
+		var class247A = FindTypeAFromIntermediary(class247Intermediary);
+		var class247B = class247A.GetMatch() ?? throw new Exception("class_247 match not found");
+
+		var dllMethodsByEntrypointA = new Dictionary<string, MethodInstance>();
+		var dllMethodsByEntrypointB = new Dictionary<string, MethodInstance>();
+
+		foreach (var method in class247A.methodsOrdered) {
+			if (method.CecilMethod!.PInvokeInfo != null)
+				dllMethodsByEntrypointA.Add(method.CecilMethod!.PInvokeInfo.EntryPoint, method);
+		}
+		foreach (var method in class247B.methodsOrdered) {
+			if (method.CecilMethod!.PInvokeInfo != null)
+				dllMethodsByEntrypointB.Add(method.CecilMethod!.PInvokeInfo.EntryPoint, method);
+		}
+
+		var count = 0;
+		foreach (var entrypoint in dllMethodsByEntrypointA.Keys.Union(dllMethodsByEntrypointB.Keys)) {
+			if (!dllMethodsByEntrypointA.ContainsKey(entrypoint)) {
+				Console.WriteLine($"Unmatched method in assembly B: {dllMethodsByEntrypointB[entrypoint].CecilMethod!.FullName}");
+			} else if (!dllMethodsByEntrypointB.ContainsKey(entrypoint)) {
+				Console.WriteLine($"Unmatched method in assembly A: {GetIntermediaryForMethodA(dllMethodsByEntrypointA[entrypoint])} ({dllMethodsByEntrypointA[entrypoint].CecilMethod!.FullName})");
+			} else {
+				matcher.MatchMethod(
+					dllMethodsByEntrypointA[entrypoint],
+					dllMethodsByEntrypointB[entrypoint]
+				);
+				count++;
+			}
+		}
+		Console.WriteLine($"Matched {count} methods on class_247");
+
+		var entrypointByDllMethodsA = dllMethodsByEntrypointA.ToDictionary(x => x.Value, x => x.Key);
+		var entrypointByDllMethodsB = dllMethodsByEntrypointB.ToDictionary(x => x.Value, x => x.Key);
+
+		// Match class_246 methods by which dll method on class_247 they call
+		var wrapperMethodsByCalledEntrypointA = new Dictionary<string, MethodInstance>();
+		var wrapperMethodsByCalledEntrypointB = new Dictionary<string, MethodInstance>();
+
+		foreach (var method in class246A.methodsOrdered) {
+			var called247Methods = method.refsOut.Where(calledMethod => calledMethod.ContainingType == class247A && entrypointByDllMethodsA.ContainsKey(calledMethod)).Select(calledMethod => entrypointByDllMethodsA[calledMethod]);
+			if (called247Methods.Count() == 1) {
+				wrapperMethodsByCalledEntrypointA.Add(called247Methods.Single(), method);
+			}
+		}
+
+		foreach (var method in class246B.methodsOrdered) {
+			var called247Methods = method.refsOut.Where(calledMethod => calledMethod.ContainingType == class247B && entrypointByDllMethodsB.ContainsKey(calledMethod)).Select(calledMethod => entrypointByDllMethodsB[calledMethod]);
+			if (called247Methods.Count() == 1) {
+				wrapperMethodsByCalledEntrypointB.Add(called247Methods.Single(), method);
+			}
+		}
+
+		count = 0;
+		foreach (var entrypoint in wrapperMethodsByCalledEntrypointA.Keys.Union(wrapperMethodsByCalledEntrypointB.Keys)) {
+			if (!wrapperMethodsByCalledEntrypointA.ContainsKey(entrypoint)) {
+				Console.WriteLine($"Unmatched method in assembly B: {wrapperMethodsByCalledEntrypointB[entrypoint].CecilMethod!.FullName}");
+			} else if (!wrapperMethodsByCalledEntrypointB.ContainsKey(entrypoint)) {
+				Console.WriteLine($"Unmatched method in assembly A: {GetIntermediaryForMethodA(wrapperMethodsByCalledEntrypointA[entrypoint])} ({wrapperMethodsByCalledEntrypointA[entrypoint].CecilMethod!.FullName})");
+			} else {
+				matcher.MatchMethod(
+					wrapperMethodsByCalledEntrypointA[entrypoint],
+					wrapperMethodsByCalledEntrypointB[entrypoint]
+				);
+				count++;
+			}
+		}
+		Console.WriteLine($"Matched {count} methods on class_246");
 	}
 
 	private void MatchClass125AndClass213() {
