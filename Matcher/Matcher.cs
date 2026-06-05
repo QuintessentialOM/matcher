@@ -789,21 +789,21 @@ public class Matcher {
 
 
 	private const double absClassAutoMatchThreshold = 0.8;
-	private const double relClassAutoMatchThreshold = 0.075;
+	private const double relClassAutoMatchThreshold = 0.06;
 	private const double absEnumAutoMatchThreshold = 0.8;
-	private const double relEnumAutoMatchThreshold = 0.075;
+	private const double relEnumAutoMatchThreshold = 0.06;
 	private const double absDelegateAutoMatchThreshold = 0.8;
-	private const double relDelegateAutoMatchThreshold = 0.075;
+	private const double relDelegateAutoMatchThreshold = 0.06;
 
 	private const double absMethodAutoMatchThreshold = 0.8;
-	private const double relMethodAutoMatchThreshold = 0.075;
+	private const double relMethodAutoMatchThreshold = 0.06;
 	// TODO these 0.03 rel thresholds are probably matching too aggressively but without it some things will just fail to match even if unchanged
 	private const double absFieldAutoMatchThreshold = 0.8;
 	private const double relFieldAutoMatchThreshold = 0.03;
 	private const double absMethodArgAutoMatchThreshold = 0.8;
 	private const double relMethodArgAutoMatchThreshold = 0.03;
 	private const double absMethodVarAutoMatchThreshold = 0.8;
-	private const double relMethodVarAutoMatchThreshold = 0.075;
+	private const double relMethodVarAutoMatchThreshold = 0.03;
 	public const bool assumeBothOrNoneObfuscated = false; // evidently not always true in general; the Editor class was unobfuscated in the old modding version but is obfuscated in newer versions
 
 	private const double minAbsMatchThreshold = 0.6;
