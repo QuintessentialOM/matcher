@@ -707,7 +707,7 @@ public class SpecialCases {
 	}
 
 	private int MatchFieldBySingleReadSite(IEnumerable<FieldInstance> inFieldsA, IEnumerable<FieldInstance> inFieldsB) {
-		// Match fields assuming that they are each read from exactly one method
+		// Match fields assuming that they are each read from exactly one method that's outside of their own class
 		Dictionary<MethodInstance, HashSet<FieldInstance>> fieldsByReadSiteA = [];
 		Dictionary<MethodInstance, HashSet<FieldInstance>> fieldsByReadSiteB = [];
 
@@ -721,7 +721,8 @@ public class SpecialCases {
 			fieldsByReadSiteA[fieldReadSite].Add(field);
 		}
 		foreach (var field in inFieldsB) {
-			var fieldReadSite = field.readRefs.Single();
+			// ignore read-refs from the field's own class
+			var fieldReadSite = field.readRefs.Where(method => method.ContainingType.GetId() != field.ContainingType.GetId()).Single();
 			if (!fieldsByReadSiteB.ContainsKey(fieldReadSite)) {
 				fieldsByReadSiteB[fieldReadSite] = [];
 			}
