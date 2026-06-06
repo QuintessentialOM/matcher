@@ -24,6 +24,7 @@ public class SpecialCases {
 		MatchClass111();
 		MatchClass246AndClass247();
 		MatchClass125AndClass213();
+		MatchStructFieldsByOrder();
 		MatchSteamCallbacks();
 		IgnoreSDL();
 		IgnoreUnusedNonnestedEnums();
@@ -506,6 +507,20 @@ public class SpecialCases {
 		Console.WriteLine($"Matched {count} of class_125 and class_213");
 	}
 
+	private void MatchStructFieldsByOrder() {
+		var struct31A = FindTypeAFromIntermediary("struct_31");
+		var matrix4A = matcher.env.EnvA.types["Matrix4"];
+
+		var struct31B = struct31A.GetMatch() ?? throw new Exception("expected struct_31 to be matched");
+		var matrix4B = matrix4A.GetMatch() ?? throw new Exception("expected Matrix4 to be matched");
+
+		var countStruct31 = MatchClassFieldsByOrder(struct31A, struct31B);
+		var countMatrix4 = MatchClassFieldsByOrder(matrix4A, matrix4B);
+
+		Console.WriteLine($"Matched {countStruct31} fields by ordering on struct_31");
+		Console.WriteLine($"Matched {countMatrix4} fields by ordering on Matrix4");
+	}
+
 	private void MatchSteamCallbacks() {
 		// Match steam callback fields by their generic parameter
 		// TODO this probably wouldn't be necessary if we were handling generics in a less hacky way
@@ -851,5 +866,14 @@ public class SpecialCases {
 			}
 		}
 		return matchedFieldsCount;
+	}
+
+	private int MatchClassFieldsByOrder(TypeInstance clsA, TypeInstance clsB) {
+		if (clsA.fieldsOrdered.Count != clsB.fieldsOrdered.Count) throw new Exception("attempted to match fields by order, but types have differing numbers of fields");
+		foreach (var (fieldA, fieldB) in clsA.fieldsOrdered.Zip(clsB.fieldsOrdered)) {
+			if (fieldA.fieldType.GetMatch() != fieldB.fieldType) throw new Exception("expected fields to be of matching types");
+			matcher.MatchField(fieldA, fieldB);
+		}
+		return clsA.fieldsOrdered.Count;
 	}
 }
