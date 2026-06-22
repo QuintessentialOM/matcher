@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Matcher.Matching;
 using Matcher.Matching.Classifier;
 using Mono.Cecil;
@@ -12,7 +13,50 @@ using Mono.Cecil;
 namespace Matcher;
 
 public static class MatcherMain {
+	private static readonly Regex MvidPattern = new("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+
+	private static readonly string RunDirectory = "run";
+	private static readonly string ExesDirectory = "run/exes";
+	private static readonly string StringsDirectory = "run/strings";
+	private static readonly string MappingsDirectory = "run/mappings";
+
+	private static string FindFileByMvidOrAlias(string directory, string? mvid, string? alias, string fileExtension) {
+		if (mvid != null) {
+			var byMvid = Directory.GetFiles(directory, $"*{mvid}*.{fileExtension}");
+			if (byMvid.Length > 0) {
+				if (byMvid.Length > 1) throw new Exception($"Found multiple possible files for MVID {mvid} in directory {directory}");
+				return byMvid[0];
+			}
+		}
+		if (alias != null) {
+			var byAlias = Directory.GetFiles(directory, $"*{alias}*.{fileExtension}");
+			if (byAlias.Length > 0) {
+				if (byAlias.Length > 1) throw new Exception($"Found multiple possible files for alias {alias} in directory {directory}");
+				return mvid != null ? AddMvidToFileNameIfAbsent(mvid, byAlias[0]) : byAlias[0];
+			}
+		}
+		throw new Exception($"Failed to find input file; mvid {mvid ?? "[none]"} alias {alias ?? "[none]"} extension {fileExtension} directory {directory}");
+	}
+
+	private static string AddMvidToFileNameIfAbsent(string mvid, string filePath) {
+		if (filePath.Contains(mvid)) return filePath;
+		var newFilePath = filePath.Insert(filePath.LastIndexOf("."), $"_{mvid}");
+		File.Move(filePath, newFilePath);
+		return newFilePath;
+	}
+
 	public static void Main(string[] args) {
+		Directory.CreateDirectory(ExesDirectory);
+		Directory.CreateDirectory(StringsDirectory);
+		Directory.CreateDirectory(MappingsDirectory);
+
+		Console.WriteLine(string.Join(", ", Directory.GetFiles(ExesDirectory)));
+
+		var matchOntoSelf = false; // whether matching onto self (for testing match stability)
+
+		var versionAliasA = "old";
+		var versionAliasB = matchOntoSelf ? versionAliasA : "ce_skew_polymers";
+
 		TypeClassifier.Init();
 		MethodClassifier.Init();
 		FieldClassifier.Init();
@@ -22,20 +66,42 @@ public static class MatcherMain {
 		options.IncludeFields = true;
 		options.WriteIndented = true;
 
+		var modulePathA = FindFileByMvidOrAlias(ExesDirectory, null, versionAliasA, "exe");
+		var modulePathB = FindFileByMvidOrAlias(ExesDirectory, null, versionAliasB, "exe");
+
+		var moduleA = ModuleDefinition.ReadModule(modulePathA);
+		var moduleB = ModuleDefinition.ReadModule(modulePathB);
+
+		var mvidA = moduleA.Mvid.ToString();
+		var mvidB = moduleB.Mvid.ToString();
+
+		if (!modulePathA.Contains(mvidA)) {
+			moduleA.Dispose();
+			modulePathA = AddMvidToFileNameIfAbsent(mvidA, modulePathA);
+			moduleA = ModuleDefinition.ReadModule(modulePathA);
+		}
+
+		if (matchOntoSelf && modulePathB != modulePathA) {
+			moduleB.Dispose();
+			modulePathB = modulePathA;
+			moduleB = ModuleDefinition.ReadModule(modulePathB);
+			mvidB = moduleB.Mvid.ToString();
+		} else if (!modulePathB.Contains(mvidB)) {
+			moduleB.Dispose();
+			modulePathB = AddMvidToFileNameIfAbsent(mvidB, modulePathB);
+			moduleB = ModuleDefinition.ReadModule(modulePathB);
+		}
+
+		var stringsPathA = FindFileByMvidOrAlias(StringsDirectory, mvidA, versionAliasA, "csv");
+		var stringsPathB = FindFileByMvidOrAlias(StringsDirectory, mvidB, versionAliasB, "csv");
+
 		Mappings mappingsA;
-		using (var mappingsStream = File.Open("oldVersionMappings.json", FileMode.Open)) {
+		using (var mappingsStream = File.Open(FindFileByMvidOrAlias(MappingsDirectory, mvidA, versionAliasA, "json"), FileMode.Open)) {
 			mappingsA = JsonSerializer.Deserialize<Mappings>(mappingsStream, options)!;
 		}
 
-		var moduleNameA = "Lightning_old.exe";
-		var moduleNameB = "Lightning_old.exe"; // "Lightning_ce_skew_polymers.exe"
-
-		// Match against self for testing
-		var moduleA = ModuleDefinition.ReadModule(moduleNameA);
-		var moduleB = ModuleDefinition.ReadModule(moduleNameB);
 		var matcher = new Matcher(mappingsA);
-		// matcher.Init(moduleA, moduleB, ["strings_old.csv"], ["strings_ce_skew_polymers.csv"]);
-		matcher.Init(moduleA, moduleB, ["strings_old.csv"], ["strings_old.csv"]);
+		matcher.Init(moduleA, moduleB, [stringsPathA], [stringsPathB]);
 		matcher.AutoMatchAll(Console.WriteLine);
 
 		var mappingsB = new Mappings() {
