@@ -27,18 +27,15 @@ public static class MatcherMain {
 			mappingsA = JsonSerializer.Deserialize<Mappings>(mappingsStream, options)!;
 		}
 
+		var moduleNameA = "Lightning_old.exe";
+		var moduleNameB = "Lightning_old.exe"; // "Lightning_ce_skew_polymers.exe"
+
 		// Match against self for testing
-		var moduleA = ModuleDefinition.ReadModule("Lightning_old.exe");
-		var moduleB = ModuleDefinition.ReadModule("Lightning_old.exe");//ModuleDefinition.ReadModule("Lightning_ce_skew_polymers.exe");
+		var moduleA = ModuleDefinition.ReadModule(moduleNameA);
+		var moduleB = ModuleDefinition.ReadModule(moduleNameB);
 		var matcher = new Matcher(mappingsA);
-		// matcher.Init(moduleA, moduleB,
-		// 		"#=qb3HWBkVlFVubfVOAwuy8rw==",
-		// 		"#=qDID3KRmTOKqTiWqrwHq$pA==",
-		// 		["strings_old.csv"], ["strings_ce_skew_polymers.csv"]);
-		matcher.Init(moduleA, moduleB,
-				"#=qb3HWBkVlFVubfVOAwuy8rw==",
-				"#=qb3HWBkVlFVubfVOAwuy8rw==",
-				["strings_old.csv"], ["strings_old.csv"]);
+		// matcher.Init(moduleA, moduleB, ["strings_old.csv"], ["strings_ce_skew_polymers.csv"]);
+		matcher.Init(moduleA, moduleB, ["strings_old.csv"], ["strings_old.csv"]);
 		matcher.AutoMatchAll(Console.WriteLine);
 
 		var mappingsB = new Mappings() {
