@@ -1321,4 +1321,46 @@ public class Matcher {
 				totalFieldCount, matchedFieldCount,
 				totalGenericParamsCount, matchedGenericParamsCount);
 	}
+
+	public void LogMissingMatches(bool inputsOnly) {
+		foreach (TypeInstance cls in env.EnvA.types.Values) {
+			if (inputsOnly && cls.CecilType == null) continue;
+			if (cls.GetSubgroup() == TypeSubgroup.GenericInstance) continue; // generic instance matching doesn't actually matter
+			if (cls.IsIgnored()) continue;
+
+			var clsMapping = mappingsA?.Classes.Where(clsMapping => clsMapping.ClassNameA == cls.CecilType!.Name).SingleOrDefault((ClassMapping?) null);
+
+			if (!cls.HasMatch()) {
+				Console.WriteLine($"unmatched class {clsMapping?.ClassNameB ?? "???"} ({cls.CecilTypeReference.FullName})");
+				continue;
+			}
+
+			foreach (MethodInstance method in cls.methodsById.Values) {
+				var methodMapping = clsMapping?.Methods.Where(methodMapping => methodMapping.MethodNameA == method.CecilMethod!.Name).SingleOrDefault((MethodMapping?) null);
+				// if (method.isReal()) {
+					if (!method.HasMatch()) {
+						Console.WriteLine($"unmatched method {methodMapping?.MethodNameB ?? "???"} on class {clsMapping?.ClassNameB ?? "???"} ({method.CecilMethod!.FullName})");
+						continue;
+					}
+
+					foreach (MethodParamInstance arg in method.args) {
+						var argMapping = methodMapping?.Parameters.Where(FieldMapping => FieldMapping.ParameterNameA == arg.CecilParameter.Name).SingleOrDefault((MethodParameterMapping?) null);
+						if (!arg.HasMatch()) {
+							Console.WriteLine($"unmatched method param {argMapping?.ParameterNameB ?? "???"} on method {methodMapping?.MethodNameB ?? "???"} ({method.CecilMethod!.FullName} -> {arg.CecilParameter.Name})");
+						}
+					}
+					// TODO method generic params
+				// }
+			}
+
+			foreach (FieldInstance field in cls.fieldsById.Values) {
+				var fieldMapping = clsMapping?.Fields.Where(FieldMapping => FieldMapping.FieldNameA == field.CecilField!.Name).SingleOrDefault((FieldMapping?) null);
+				if (!field.HasMatch()) {
+					Console.WriteLine($"unmatched field {fieldMapping?.FieldNameB ?? "???"} on class {clsMapping?.ClassNameB ?? "???"} ({field.CecilField!.FullName})");
+				}
+			}
+
+			// TODO class generic params
+		}
+	}
 }

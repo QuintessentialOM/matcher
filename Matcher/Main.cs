@@ -45,13 +45,9 @@ public static class MatcherMain {
 			NamespaceA = mappingsA.NamespaceA,
 			NamespaceB = mappingsA.NamespaceB,
 		};
-		Console.WriteLine(mappingsA.Classes.Count);
-		var classObfToInter = mappingsA.Classes.ToDictionary(cls => cls.ClassNameA);
-		foreach (var cls in matcher.env.EnvA.types.Values) {
-			if (cls.CecilType == null) continue;
-			if (cls.CecilTypeReference.IsPointer || cls.CecilTypeReference.IsGenericInstance) continue;
-			if (!cls.IsIgnored() && !cls.HasMatch()) Console.WriteLine($"unmatched {classObfToInter.GetValueOrDefault(cls.CecilTypeReference.Name)?.ClassNameB ?? "???"} ({cls.CecilTypeReference.FullName})");
-		}
+
+		matcher.LogMissingMatches(true);
+
 		// // index by name instead of fullname
 		// Dictionary<string, TypeInstance?> matcherClassInstances = matcher.env.EnvA.types.Values.ToDictionary(typeInstance => typeInstance.GetName())!;
 		// foreach (var classMapping in mappingsA.Classes) {
