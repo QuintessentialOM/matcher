@@ -797,9 +797,9 @@ public class Matcher {
 
 	private const double absMethodAutoMatchThreshold = 0.8;
 	private const double relMethodAutoMatchThreshold = 0.06;
-	// TODO these 0.03 rel thresholds are probably matching too aggressively but without it some things will just fail to match even if unchanged
+	// TODO these 0.03 and below rel thresholds are probably matching too aggressively but without it some things will just fail to match even if unchanged
 	private const double absFieldAutoMatchThreshold = 0.8;
-	private const double relFieldAutoMatchThreshold = 0.03;
+	private const double relFieldAutoMatchThreshold = 0.01;
 	private const double absMethodArgAutoMatchThreshold = 0.8;
 	private const double relMethodArgAutoMatchThreshold = 0.03;
 	private const double absMethodVarAutoMatchThreshold = 0.8;
