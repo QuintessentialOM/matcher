@@ -1330,7 +1330,7 @@ public class Matcher {
 			if (cls.GetSubgroup() == TypeSubgroup.GenericInstance) continue; // generic instance matching doesn't actually matter
 			if (cls.IsIgnored()) continue;
 
-			var clsMapping = mappingsA?.Classes.Where(clsMapping => clsMapping.ClassNameA == cls.CecilType!.Name).SingleOrDefault((ClassMapping?) null);
+			var clsMapping = mappingsA?.Classes.Where(clsMapping => clsMapping.ClassFullNameA == cls.CecilType!.FullName).SingleOrDefault((ClassMapping?) null);
 
 			if (!cls.HasMatch()) {
 				Console.WriteLine($"unmatched class {clsMapping?.ClassNameB ?? "???"} ({cls.CecilTypeReference.FullName})");

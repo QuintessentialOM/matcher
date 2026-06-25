@@ -34,17 +34,17 @@ public class SpecialCases {
 	}
 
 	private TypeInstance FindTypeAFromIntermediary(string intermediaryName) {
-		var obfName = mappingsA.Classes.Where(cls => cls.ClassNameB == intermediaryName).Single().ClassNameA;
-		return matcher.env.EnvA.types.Values.Where(type => type.CecilTypeReference.Name == obfName).Single();
+		var obfName = mappingsA.Classes.Where(cls => cls.ClassNameB == intermediaryName).Single().ClassFullNameA;
+		return matcher.env.EnvA.types.Values.Where(type => type.CecilTypeReference.FullName == obfName).Single();
 	}
 
 	private MethodInstance FindMethodAFromIntermediary(TypeInstance typeA, string intermediaryName) {
-		var obfName = mappingsA.Classes.Where(cls => cls.ClassNameA == typeA.CecilTypeReference.Name).Single().Methods.Where(method => method.MethodNameB == intermediaryName).Single().MethodNameA;
+		var obfName = mappingsA.Classes.Where(cls => cls.ClassFullNameA == typeA.CecilTypeReference.FullName).Single().Methods.Where(method => method.MethodNameB == intermediaryName).Single().MethodNameA;
 		return typeA.GetMethod(obfName, null)!;
 	}
 
 	private FieldInstance FindFieldAFromIntermediary(TypeInstance typeA, string intermediaryName) {
-		var obfName = mappingsA.Classes.Where(cls => cls.ClassNameA == typeA.CecilTypeReference.Name).Single().Fields.Where(field => field.FieldNameB == intermediaryName).Single().FieldNameA;
+		var obfName = mappingsA.Classes.Where(cls => cls.ClassFullNameA == typeA.CecilTypeReference.FullName).Single().Fields.Where(field => field.FieldNameB == intermediaryName).Single().FieldNameA;
 		return typeA.GetField(obfName, null)!;
 	}
 
@@ -53,7 +53,7 @@ public class SpecialCases {
 	}
 
 	private string GetIntermediaryForTypeA(TypeReference typeReference) {
-		var cls = mappingsA.Classes.Where(cls => cls.ClassNameA == typeReference.Name).SingleOrDefault((ClassMapping?) null);
+		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == typeReference.FullName).SingleOrDefault((ClassMapping?) null);
 		return cls?.ClassNameB ?? "???";
 	}
 
@@ -62,7 +62,7 @@ public class SpecialCases {
 	}
 
 	private string GetIntermediaryForFieldA(FieldReference fieldReference) {
-		var cls = mappingsA.Classes.Where(cls => cls.ClassNameA == fieldReference.DeclaringType.Name).SingleOrDefault((ClassMapping?) null);
+		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == fieldReference.DeclaringType.FullName).SingleOrDefault((ClassMapping?) null);
 		if (cls == null) return "???";
 		var fieldName = cls.Fields.Where(field => field.FieldNameA == fieldReference.Name).SingleOrDefault((FieldMapping?) null);
 		return fieldName?.FieldNameB ?? "???";
@@ -73,7 +73,7 @@ public class SpecialCases {
 	}
 
 	private string GetIntermediaryForMethodA(MethodReference methodReference) {
-		var cls = mappingsA.Classes.Where(cls => cls.ClassNameA == methodReference.DeclaringType.Name).SingleOrDefault((ClassMapping?) null);
+		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == methodReference.DeclaringType.FullName).SingleOrDefault((ClassMapping?) null);
 		if (cls == null) return "???";
 		var methodName = cls.Methods.Where(method => method.MethodNameA == methodReference.Name).SingleOrDefault((MethodMapping?) null);
 		return methodName?.MethodNameB ?? "???";
