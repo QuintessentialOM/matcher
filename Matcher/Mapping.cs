@@ -77,6 +77,8 @@ public class FieldMapping {
 
 public class MethodMapping {
 	public required string MethodNameA;
+	public required string ReturnTypeFullNameA;
+	public required List<string> ArgumentTypeFullNamesA;
 	public string? MethodNameB;
 	public List<MethodParameterMapping> Parameters = [];
 	public List<GenericParameterMapping> GenericParameters = [];
