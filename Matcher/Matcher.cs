@@ -1338,7 +1338,13 @@ public class Matcher {
 			}
 
 			foreach (MethodInstance method in cls.methodsById.Values) {
-				var methodMapping = clsMapping?.Methods.Where(methodMapping => methodMapping.MethodNameA == method.CecilMethod!.Name).SingleOrDefault((MethodMapping?) null);
+				var m = method.CecilMethod!;
+				var methodMapping = clsMapping?.Methods.Where(methodMapping => {
+					return methodMapping.MethodNameA == m.Name
+						&& methodMapping.ReturnTypeFullNameA == m.ReturnType.FullName
+						&& methodMapping.ArgumentTypeFullNamesA.Count == m.Parameters.Count
+						&& methodMapping.ArgumentTypeFullNamesA.Zip(m.Parameters).All(pair => pair.First == pair.Second.ParameterType.FullName);
+				}).SingleOrDefault((MethodMapping?) null);
 				// if (method.isReal()) {
 					if (!method.HasMatch()) {
 						Console.WriteLine($"unmatched method {methodMapping?.MethodNameB ?? "???"} on class {clsMapping?.ClassNameB ?? "???"} ({method.CecilMethod!.FullName})");
@@ -1346,7 +1352,7 @@ public class Matcher {
 					}
 
 					foreach (MethodParamInstance arg in method.args) {
-						var argMapping = methodMapping?.Parameters.Where(FieldMapping => FieldMapping.ParameterNameA == arg.CecilParameter.Name).SingleOrDefault((MethodParameterMapping?) null);
+						var argMapping = methodMapping?.Parameters.Where(argMapping => argMapping.ParameterNameA == arg.CecilParameter.Name).SingleOrDefault((MethodParameterMapping?) null);
 						if (!arg.HasMatch()) {
 							Console.WriteLine($"unmatched method param {argMapping?.ParameterNameB ?? "???"} on method {methodMapping?.MethodNameB ?? "???"} ({method.CecilMethod!.FullName} -> {arg.CecilParameter.Name})");
 						}
@@ -1356,7 +1362,7 @@ public class Matcher {
 			}
 
 			foreach (FieldInstance field in cls.fieldsById.Values) {
-				var fieldMapping = clsMapping?.Fields.Where(FieldMapping => FieldMapping.FieldNameA == field.CecilField!.Name).SingleOrDefault((FieldMapping?) null);
+				var fieldMapping = clsMapping?.Fields.Where(fieldMapping => fieldMapping.FieldNameA == field.CecilField!.Name).SingleOrDefault((FieldMapping?) null);
 				if (!field.HasMatch()) {
 					Console.WriteLine($"unmatched field {fieldMapping?.FieldNameB ?? "???"} on class {clsMapping?.ClassNameB ?? "???"} ({field.CecilField!.FullName})");
 				}
