@@ -55,7 +55,7 @@ public static class MatcherMain {
 		var matchOntoSelf = false; // whether matching onto self (for testing match stability)
 
 		var versionAliasA = "old";
-		var versionAliasB = matchOntoSelf ? versionAliasA : "ce_skew_polymers";
+		var versionAliasB = matchOntoSelf ? versionAliasA : "ce_20260704_korean";
 
 		TypeClassifier.Init();
 		MethodClassifier.Init();
@@ -95,117 +95,186 @@ public static class MatcherMain {
 		var stringsPathA = FindFileByMvidOrAlias(StringsDirectory, mvidA, versionAliasA, "csv");
 		var stringsPathB = FindFileByMvidOrAlias(StringsDirectory, mvidB, versionAliasB, "csv");
 
-		Mappings mappingsA;
+		Mappings? mappingsOld;
 		using (var mappingsStream = File.Open(FindFileByMvidOrAlias(MappingsDirectory, mvidA, versionAliasA, "json"), FileMode.Open)) {
-			mappingsA = JsonSerializer.Deserialize<Mappings>(mappingsStream, options)!;
+			mappingsOld = JsonSerializer.Deserialize<Mappings>(mappingsStream, options)!;
 		}
 
-		var matcher = new Matcher(mappingsA);
+		var matcher = new Matcher(mappingsOld);
 		matcher.Init(moduleA, moduleB, [stringsPathA], [stringsPathB]);
 		matcher.AutoMatchAll(Console.WriteLine);
 
-		var mappingsB = new Mappings() {
-			NamespaceA = mappingsA.NamespaceA,
-			NamespaceB = mappingsA.NamespaceB,
+		var mappingsNew = new Mappings() {
+			NamespaceA = "obf",
+			NamespaceB = "intermediary",
+			nextClassIndex = mappingsOld.nextClassIndex,
+			nextEnumIndex = mappingsOld.nextEnumIndex,
+			nextInterfaceIndex = mappingsOld.nextInterfaceIndex,
+			nextMethodIndex = mappingsOld.nextMethodIndex,
+			nextStructIndex = mappingsOld.nextStructIndex,
+			nextDelegateIndex = mappingsOld.nextDelegateIndex,
+			nextFieldIndex = mappingsOld.nextFieldIndex,
+			nextGenericIndex = mappingsOld.nextGenericIndex,
+			nextParamIndex = mappingsOld.nextParamIndex,
 		};
 
 		matcher.LogMissingMatches(true);
 
-		// // index by name instead of fullname
-		// Dictionary<string, TypeInstance?> matcherClassInstances = matcher.env.EnvA.types.Values.ToDictionary(typeInstance => typeInstance.GetName())!;
-		// foreach (var classMapping in mappingsA.Classes) {
-		// 	var classInstance = matcherClassInstances.GetValueOrDefault(classMapping.ClassNameA, null);
-		// 	if (classInstance == null) {
-		// 		// TODO these missing instance cases evidently do happen; should investigate why
-		// 		Console.WriteLine($"Missing class instance for {classMapping.ClassNameA}; this shouldn't happen probably?");
-		// 		continue;
-		// 	}
-		// 	if (classInstance.HasMatch()) {
-		// 		TypeInstance matchedClassInstance = classInstance.GetMatch()!;
-		// 		var matchedClassMapping = new ClassMapping() {
-		// 			ClassNameA = matchedClassInstance.GetName(),
-		// 			ClassNameB = classMapping.ClassNameB,
-		// 		};
-		// 		mappingsB.Classes.Add(matchedClassMapping);
-		// 		foreach (var methodMapping in classMapping.Methods) {
-		// 			var methodInstance = classInstance.GetMethod(methodMapping.MethodNameA, null);
-		// 			if (methodInstance == null) {
-		// 				Console.WriteLine($"Missing method instance for {methodMapping.MethodNameA}; this shouldn't happen probably?");
-		// 				continue;
-		// 			}
-		// 			if (methodInstance.HasMatch()) {
-		// 				MethodInstance matchedMethodInstance = methodInstance.GetMatch()!;
-		// 				var matchedMethodMapping = new MethodMapping() {
-		// 					MethodNameA = matchedMethodInstance.GetName(),
-		// 					MethodNameB = methodMapping.MethodNameB,
-		// 				};
-		// 				matchedClassMapping.Methods.Add(matchedMethodMapping);
-		// 				foreach (var methodParamMapping in methodMapping.Parameters) {
-		// 					var methodParamInstance = methodInstance.args.Where(param => param.GetName() == methodParamMapping.ParameterNameA).SingleOrDefault((MethodParamInstance?) null);
-		// 					if (methodParamInstance == null) {
-		// 						Console.WriteLine($"Missing method param instance for {methodParamMapping.ParameterNameA}; this shouldn't happen probably?");
-		// 						continue;
-		// 					}
-		// 					if (methodParamInstance.HasMatch()) {
-		// 						MethodParamInstance matchedMethodParamInstance = methodParamInstance.GetMatch()!;
-		// 						var matchedMethodParamMapping = new MethodParameterMapping() {
-		// 							ParameterNameA = matchedMethodParamInstance.GetName(),
-		// 							ParameterNameB = methodParamMapping.ParameterNameB,
-		// 						};
-		// 						matchedMethodMapping.Parameters.Add(matchedMethodParamMapping);
-		// 					}
-		// 				}
-		// 				foreach (var genericParamMapping in methodMapping.GenericParameters) {
-		// 					var genericParamInstance = methodInstance.genericParamsOrdered.Where(param => param.GetName() == genericParamMapping.GenericNameA).SingleOrDefault((TypeInstance?) null);
-		// 					if (genericParamInstance == null) {
-		// 						Console.WriteLine($"Missing generic param instance for {genericParamMapping.GenericNameA}; this shouldn't happen probably?");
-		// 						continue;
-		// 					}
-		// 					if (genericParamInstance.HasMatch()) {
-		// 						TypeInstance matchedGenericParamInstance = genericParamInstance.GetMatch()!;
-		// 						var matchedGenericParamMapping = new GenericParameterMapping {
-		// 							GenericNameA = matchedGenericParamInstance.GetName(),
-		// 							GenericNameB = genericParamMapping.GenericNameB,
-		// 						};
-		// 						matchedMethodMapping.GenericParameters.Add(matchedGenericParamMapping);
-		// 					}
-		// 				}
-		// 			}
-		// 		}
-		// 		foreach (var fieldMapping in classMapping.Fields) {
-		// 			var fieldInstance = classInstance.GetField(fieldMapping.FieldNameA, null);
-		// 			if (fieldInstance == null) {
-		// 				Console.WriteLine($"Missing field instance for {fieldMapping.FieldNameA}; this shouldn't happen probably?");
-		// 				continue;
-		// 			}
-		// 			if (fieldInstance.HasMatch()) {
-		// 				FieldInstance matchedFieldInstance = fieldInstance.GetMatch()!;
-		// 				var matchedFieldMapping = new FieldMapping() {
-		// 					FieldNameA = matchedFieldInstance.GetName(),
-		// 					FieldNameB = fieldMapping.FieldNameB,
-		// 				};
-		// 				matchedClassMapping.Fields.Add(matchedFieldMapping);
-		// 			}
-		// 		}
-		// 		foreach (var genericParamMapping in classMapping.GenericParameters) {
-		// 			var genericParamInstance = classInstance.genericParamsOrdered.Where(param => param.GetName() == genericParamMapping.GenericNameA).SingleOrDefault((TypeInstance?) null);
-		// 			if (genericParamInstance == null) {
-		// 				Console.WriteLine($"Missing generic param instance for {genericParamMapping.GenericNameA}; this shouldn't happen probably?");
-		// 				continue;
-		// 			}
-		// 			if (genericParamInstance.HasMatch()) {
-		// 				TypeInstance matchedGenericParamInstance = genericParamInstance.GetMatch()!;
-		// 				var matchedGenericParamMapping = new GenericParameterMapping {
-		// 					GenericNameA = matchedGenericParamInstance.GetName(),
-		// 					GenericNameB = genericParamMapping.GenericNameB,
-		// 				};
-		// 				matchedClassMapping.GenericParameters.Add(matchedGenericParamMapping);
-		// 			}
-		// 		}
-		// 	}
-		// }
-		// using (var mappingsStream = File.Open("selfMatchTest.json", FileMode.Create)) {
-		// 	JsonSerializer.Serialize(mappingsStream, mappingsB, options);
-		// }
+		// // Ignore non-obf names, except for the generated <> stuff
+		var deobfPattern = new Regex("^[a-zA-Z_\\`][a-zA-Z0-9_\\`]*(\\[])*$");
+
+		var methodHierarchyAToIntermediaryName = new Dictionary<MethodHierarchyData, string?>();
+		var methodHierarchyBToNewlyGeneratedIntermediaryName = new Dictionary<MethodHierarchyData, string>();
+
+		// preprocessing to collect intermediary names for method hierarchies
+		foreach (var type in matcher.env.EnvA.types.Values) {
+			if (type.IsIgnored() || type.IsArray() || type.CecilTypeReference.IsPointer || type.CecilTypeReference.IsByReference) continue;
+			if (type.CecilTypeReference.IsGenericInstance) continue;
+			if (type.CecilTypeReference.IsGenericParameter) continue; // stored on their owner instead
+			ClassMapping? classMapping = mappingsOld.Classes.Where(cls => cls.ClassFullNameA == type.CecilTypeReference.FullName).SingleOrDefault((ClassMapping?) null);
+			if (classMapping == null) continue;
+			foreach (var method in type.methodsOrdered) {
+				MethodMapping? methodMapping = classMapping.Methods.Where(methodM => {
+						return methodM.MethodNameA == method.CecilMethod.Name
+							&& methodM.ReturnTypeFullNameA == method.CecilMethod.ReturnType.FullName
+							&& methodM.ArgumentTypeFullNamesA.Count == method.CecilMethod.Parameters.Count
+							&& methodM.ArgumentTypeFullNamesA.Zip(method.CecilMethod.Parameters).All(pair => pair.First == pair.Second.ParameterType.FullName);
+					}).SingleOrDefault((MethodMapping?) null);
+				if (methodHierarchyAToIntermediaryName.ContainsKey(method.hierarchyData)) {
+					if (methodHierarchyAToIntermediaryName[method.hierarchyData] != methodMapping.MethodNameB)
+						throw new Exception("Expected method intermediary names to match for all members of hierarchy");
+				} else {
+					methodHierarchyAToIntermediaryName[method.hierarchyData] = methodMapping.MethodNameB;
+				}
+			}
+		}
+
+		foreach (var type in matcher.env.EnvB.types.Values) {
+			if (type.IsIgnored() || type.IsArray() || type.CecilTypeReference.IsPointer || type.CecilTypeReference.IsByReference) continue;
+			if (type.CecilTypeReference.IsGenericInstance) continue;
+			if (type.CecilTypeReference.IsGenericParameter) continue; // stored on their owner instead
+			ClassMapping? classMappingOld = null;
+			if (type.HasMatch()) {
+				classMappingOld = mappingsOld.Classes.Where(cls => cls.ClassFullNameA == type.GetMatch()!.CecilTypeReference.FullName).SingleOrDefault((ClassMapping?) null);
+			}
+			var classMappingNew = new ClassMapping {
+				ClassFullNameA = type.CecilTypeReference.FullName,
+			};
+			mappingsNew.Classes.Add(classMappingNew);
+			if (!deobfPattern.IsMatch(type.CecilTypeReference.Name)) {
+				if (classMappingOld == null || classMappingOld.ClassNameB == null) {
+					classMappingNew.ClassNameB = mappingsNew.GetNextTypeIntermediaryName(type.CecilType);
+				} else {
+					classMappingNew.ClassNameB = classMappingOld.ClassNameB;
+				}
+			}
+			foreach (var field in type.fieldsOrdered) {
+				FieldMapping? fieldMappingOld = null;
+				if (field.HasMatch()) {
+					fieldMappingOld = classMappingOld?.Fields.Where(fieldM => fieldM.FieldNameA == field.GetMatch()!.CecilField.Name).SingleOrDefault((FieldMapping?) null);
+				}
+				var fieldMappingNew = new FieldMapping {
+					FieldNameA = field.CecilField.Name,
+				};
+				classMappingNew.Fields.Add(fieldMappingNew);
+				if (!deobfPattern.IsMatch(field.CecilField.Name)) {
+					if (fieldMappingOld == null || fieldMappingOld.FieldNameB == null) {
+						fieldMappingNew.FieldNameB = mappingsNew.GetNextFieldIntermediaryName();
+					} else {
+						fieldMappingNew.FieldNameB = fieldMappingOld.FieldNameB;
+					}
+				}
+			}
+			foreach (var generic in type.genericParamsOrdered) {
+				GenericParameterMapping? genericMappingOld = null;
+				if (generic.HasMatch()) {
+					genericMappingOld = classMappingOld?.GenericParameters.Where(genericM => genericM.GenericNameA == generic.GetMatch()!.CecilTypeReference.Name).SingleOrDefault((GenericParameterMapping?) null);
+				}
+				var genericMappingNew = new GenericParameterMapping {
+					GenericNameA = generic.CecilTypeReference.Name,
+				};
+				classMappingNew.GenericParameters.Add(genericMappingNew);
+				if (!deobfPattern.IsMatch(generic.CecilTypeReference.Name)) {
+					if (genericMappingOld == null || genericMappingOld.GenericNameB == null) {
+						genericMappingNew.GenericNameB = mappingsNew.GetNextGenericIntermediaryName();
+					} else {
+						genericMappingNew.GenericNameB = genericMappingOld.GenericNameB;
+					}
+				}
+			}
+			foreach (var method in type.methodsOrdered) {
+				MethodMapping? methodMappingOld = null;
+				if (method.HasMatch()) {
+					var match = method.GetMatch()!.CecilMethod;
+					methodMappingOld = classMappingOld?.Methods.Where(methodM => {
+						return methodM.MethodNameA == match.Name
+							&& methodM.ReturnTypeFullNameA == match.ReturnType.FullName
+							&& methodM.ArgumentTypeFullNamesA.Count == match.Parameters.Count
+							&& methodM.ArgumentTypeFullNamesA.Zip(match.Parameters).All(pair => pair.First == pair.Second.ParameterType.FullName);
+					}).SingleOrDefault((MethodMapping?) null);
+				}
+				var methodMappingNew = new MethodMapping {
+					MethodNameA = method.CecilMethod.Name,
+					ReturnTypeFullNameA = method.returnType.CecilTypeReference.FullName,
+					ArgumentTypeFullNamesA = method.args.Select(arg => arg.CecilParameter.ParameterType.FullName).ToList(),
+				};
+				classMappingNew.Methods.Add(methodMappingNew);
+				if (!method.CecilMethod.IsRuntimeSpecialName && !deobfPattern.IsMatch(method.CecilMethod.Name)) {
+					if (!method.HasHierarchyMatch() || methodHierarchyAToIntermediaryName[method.hierarchyData.MatchedHierarchy!] == null) {
+						string? newNameForHierarchy = methodHierarchyBToNewlyGeneratedIntermediaryName!.GetValueOrDefault(method.hierarchyData, null);
+						if (newNameForHierarchy != null) {
+							methodMappingNew.MethodNameB = newNameForHierarchy;
+						} else {
+							methodMappingNew.MethodNameB = mappingsNew.GetNextMethodIntermediaryName();
+							methodHierarchyBToNewlyGeneratedIntermediaryName[method.hierarchyData] = methodMappingNew.MethodNameB;
+						}
+					} else {
+						methodMappingNew.MethodNameB = methodHierarchyAToIntermediaryName[method.hierarchyData.MatchedHierarchy!];
+					}
+				}
+
+				foreach (var generic in method.genericParamsOrdered) {
+					GenericParameterMapping? genericMappingOld = null;
+					if (generic.HasMatch()) {
+						genericMappingOld = methodMappingOld?.GenericParameters.Where(genericM => genericM.GenericNameA == generic.GetMatch()!.CecilTypeReference.Name).SingleOrDefault((GenericParameterMapping?) null);
+					}
+					var genericMappingNew = new GenericParameterMapping {
+						GenericNameA = generic.CecilTypeReference.Name,
+					};
+					methodMappingNew.GenericParameters.Add(genericMappingNew);
+					if (!deobfPattern.IsMatch(generic.CecilTypeReference.Name)) {
+						if (genericMappingOld == null || genericMappingOld.GenericNameB == null) {
+							genericMappingNew.GenericNameB = mappingsNew.GetNextGenericIntermediaryName();
+						} else {
+							genericMappingNew.GenericNameB = genericMappingOld.GenericNameB;
+						}
+					}
+				}
+
+				foreach (var param in method.args) {
+					MethodParameterMapping? paramMappingOld = null;
+					if (param.HasMatch()) {
+						paramMappingOld = methodMappingOld?.Parameters.Where(paramM => paramM.ParameterNameA == param.GetMatch()!.CecilParameter.Name).SingleOrDefault((MethodParameterMapping?) null);
+					}
+					var paramMappingNew = new MethodParameterMapping {
+						ParameterNameA = param.CecilParameter.Name,
+					};
+					methodMappingNew.Parameters.Add(paramMappingNew);
+					if (!deobfPattern.IsMatch(param.CecilParameter.Name)) {
+						if (paramMappingOld == null || paramMappingOld.ParameterNameB == null) {
+							paramMappingNew.ParameterNameB = mappingsNew.GetNextParamIntermediaryName();
+						} else {
+							paramMappingNew.ParameterNameB = paramMappingOld.ParameterNameB;
+						}
+					}
+				}
+			}
+		}
+
+		if (!matchOntoSelf) {
+			using (var mappingsStream = File.Open(Path.Join(MappingsDirectory, $"mappings_{versionAliasB}_{mvidB}.json"), FileMode.Create)) {
+				JsonSerializer.Serialize(mappingsStream, mappingsNew, options);
+			}
+		}
 	}
 }
