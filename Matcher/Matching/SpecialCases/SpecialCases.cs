@@ -818,15 +818,20 @@ public class SpecialCases {
 		var matchedFieldsCount = 0;
 
 		foreach (var field in inFieldsA) {
-			var fieldReadSite = field.readRefs.Single();
+			// ignore read-refs from the field's own class unless those are the only read-refs
+			var fieldReadSite = field.readRefs.Where(method => method.ContainingType.GetId() != field.ContainingType.GetId()).SingleOrDefault((MethodInstance?) null);
+			fieldReadSite ??= field.readRefs.SingleOrDefault((MethodInstance?) null);
+			if (fieldReadSite == null) throw new Exception("Field has no read sites");
 			if (!fieldsByReadSiteA.ContainsKey(fieldReadSite)) {
 				fieldsByReadSiteA[fieldReadSite] = [];
 			}
 			fieldsByReadSiteA[fieldReadSite].Add(field);
 		}
 		foreach (var field in inFieldsB) {
-			// ignore read-refs from the field's own class
-			var fieldReadSite = field.readRefs.Where(method => method.ContainingType.GetId() != field.ContainingType.GetId()).Single();
+			// ignore read-refs from the field's own class unless those are the only read-refs
+			var fieldReadSite = field.readRefs.Where(method => method.ContainingType.GetId() != field.ContainingType.GetId()).SingleOrDefault((MethodInstance?) null);
+			fieldReadSite ??= field.readRefs.SingleOrDefault((MethodInstance?) null);
+			if (fieldReadSite == null) throw new Exception("Field has no read sites");
 			if (!fieldsByReadSiteB.ContainsKey(fieldReadSite)) {
 				fieldsByReadSiteB[fieldReadSite] = [];
 			}
