@@ -156,16 +156,15 @@ public class TypeInstance : MatchableMemberOrClass {
 		return ignored;
 	}
 
-	public void MarkIgnored() {
-		ignored = true;
-		SetMatchable(false);
+	public void MarkIgnored(bool ignored) {
+		this.ignored = ignored;
+		SetMatchable(!ignored);
 	}
 
-	public void MarkIgnoredRecursive() {
-		ignored = true;
-		SetMatchable(false);
+	public void MarkIgnoredRecursive(bool ignored) {
+		MarkIgnored(ignored);
 		foreach (var nested in nestedTypes) {
-			nested.MarkIgnoredRecursive();
+			nested.MarkIgnoredRecursive(ignored);
 		}
 	}
 }

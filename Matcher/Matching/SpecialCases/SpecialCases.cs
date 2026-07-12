@@ -26,7 +26,7 @@ public class SpecialCases {
 		MatchClass125AndClass213();
 		MatchStructFieldsByOrder();
 		MatchSteamCallbacks();
-		IgnoreSDL();
+		MatchNeededSdlTypesAndIgnoreTheRest();
 		IgnoreUnusedNonnestedEnums();
 		MatchUnmatchedLambdaGeneratedClasses();
 		MatchAngleBracketsCInnerClassMembers();
@@ -334,14 +334,14 @@ public class SpecialCases {
 		var enumIgnoreCountA = 0;
 		foreach (var nested in class111A.nestedTypes) {
 			if (!nested.IsIgnored() && nested.GetSubgroup() == TypeSubgroup.Enum) {
-				nested.MarkIgnored();
+				nested.MarkIgnored(true);
 				enumIgnoreCountA++;
 			}
 		}
 		var enumIgnoreCountB = 0;
 		foreach (var nested in class111B.nestedTypes) {
 			if (!nested.IsIgnored() && nested.GetSubgroup() == TypeSubgroup.Enum) {
-				nested.MarkIgnored();
+				nested.MarkIgnored(true);
 				enumIgnoreCountB++;
 			}
 		}
@@ -557,11 +557,39 @@ public class SpecialCases {
 		Console.WriteLine($"Matched {count} callback fields on Steam");
 	}
 
-	private void IgnoreSDL() {
-		// We ignore SDL for now, since most of it is unobfuscated anyway, and the obfuscated parts are awkward to match
-		matcher.env.EnvA.types["SDL2.SDL"].MarkIgnoredRecursive();
-		matcher.env.EnvB.types["SDL2.SDL"].MarkIgnoredRecursive();
-		Console.WriteLine("Ignoring SDL");
+	private void MatchNeededSdlTypesAndIgnoreTheRest() {
+		// We ignore most of SDL for now, since most of it is unobfuscated anyway, and the obfuscated parts are awkward to match
+		matcher.env.EnvA.types["SDL2.SDL"].MarkIgnoredRecursive(true);
+		matcher.env.EnvB.types["SDL2.SDL"].MarkIgnoredRecursive(true);
+
+		var sdlEventA = FindTypeAFromIntermediary("struct_103");
+		var sdlKeyA = FindTypeAFromIntermediary("enum_160");
+		var sdlEventTypeA = FindTypeAFromIntermediary("enum_175");
+
+		var sdlB = matcher.env.EnvB.types["SDL2.SDL"];
+
+		// match the types we need by method params:
+		// SDL_HasEvent(SDL_EventType type)
+		// SDL_PollEvent(out SDL_Event _event)
+		// SDL_GetKeyName(SDLKey key)
+
+		// TODO reference types currently aren't handled fully correctly probably, so need this jank to get the actual underlying type
+		var sdlEventB = matcher.env.EnvB.types[sdlB.GetMethod("SDL_PollEvent", null)!.args[0].paramType.CecilTypeReference.GetElementType().FullName];
+		var sdlKeyB = sdlB.GetMethod("SDL_GetKeyName", null)!.args[0].paramType;
+		var sdlEventTypeB = sdlB.GetMethod("SDL_HasEvent", null)!.args[0].paramType;
+
+		sdlEventA.MarkIgnored(false);
+		sdlKeyA.MarkIgnored(false);
+		sdlEventTypeA.MarkIgnored(false);
+
+		sdlEventB.MarkIgnored(false);
+		sdlKeyB.MarkIgnored(false);
+		sdlEventTypeB.MarkIgnored(false);
+
+		matcher.MatchType(sdlEventA, sdlEventB);
+		matcher.MatchType(sdlKeyA, sdlKeyB);
+		matcher.MatchType(sdlEventTypeA, sdlEventTypeB);
+		Console.WriteLine("Matched the obfuscated parts of SDL we need and ignored the rest");
 	}
 
 	private bool CheckEnumUnused(TypeInstance cls) {
@@ -573,14 +601,14 @@ public class SpecialCases {
 		var enumIgnoreCountA = 0;
 		foreach (var cls in matcher.env.EnvA.types.Values) {
 			if (!cls.IsIgnored() && cls.outerType == null && cls.GetSubgroup() == TypeSubgroup.Enum && CheckEnumUnused(cls)) {
-				cls.MarkIgnored();
+				cls.MarkIgnored(true);
 				enumIgnoreCountA++;
 			}
 		}
 		var enumIgnoreCountB = 0;
 		foreach (var cls in matcher.env.EnvB.types.Values) {
 			if (!cls.IsIgnored() && cls.outerType == null && cls.GetSubgroup() == TypeSubgroup.Enum && CheckEnumUnused(cls)) {
-				cls.MarkIgnored();
+				cls.MarkIgnored(true);
 				enumIgnoreCountB++;
 			}
 		}
