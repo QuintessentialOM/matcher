@@ -31,6 +31,8 @@ public class SpecialCases {
 		MatchUnmatchedLambdaGeneratedClasses();
 		MatchAngleBracketsCInnerClassMembers();
 		MatchMiscObfInnerClassMembers();
+
+		GenerateSuggestedAssetNames();
 	}
 
 	private TypeInstance FindTypeAFromIntermediary(string intermediaryName) {
@@ -77,6 +79,68 @@ public class SpecialCases {
 		if (cls == null) return "???";
 		var methodName = cls.Methods.Where(method => method.MethodNameA == methodReference.Name).SingleOrDefault((MethodMapping?) null);
 		return methodName?.MethodNameB ?? "???";
+	}
+
+	private void GenerateSuggestedAssetNames() {
+		Regex frameCount = new("_[0-9]{4}");
+
+		const string texturesIntermediary = "class_17";
+		var texturesClassA = FindTypeAFromIntermediary(texturesIntermediary);
+		var texturesClassB = texturesClassA.GetMatch() ?? throw new Exception("textures class match not found");
+
+		const string soundsIntermediary = "class_201";
+		var soundsClassA = FindTypeAFromIntermediary(soundsIntermediary);
+		var soundsClassB = soundsClassA.GetMatch() ?? throw new Exception("sounds class match not found");
+
+		// Music is excluded so the music tracks can be manually mapped instead, since the file names are not the actual track names
+		// const string musicIntermediary = "class_102";
+		// var musicClassA = FindTypeAFromIntermediary(musicIntermediary);
+		// var musicClassB = musicClassA.GetMatch() ?? throw new Exception("music class match not found");
+
+		foreach (var rootType in new TypeInstance[] {texturesClassB, soundsClassB/*, musicClassB*/}) {
+			var lastString = "";
+			foreach (var method in rootType.methodsOrdered) {
+				if (method.CecilMethod?.Body?.Instructions != null) {
+					foreach (var instr in method.CecilMethod.Body.Instructions) {
+						if (instr.OpCode == OpCodes.Ldstr) {
+							// strip frame numbers so changed frame counts don't prevent matching
+							lastString = frameCount.Replace((string) instr.Operand, "");
+						} else if (instr.OpCode == OpCodes.Ldsfld && instr.Operand is FieldReference fieldRef) {
+							if (fieldRef.DeclaringType.Name != "Color") continue;
+							lastString = ""; // skip colors
+						} else if (instr.OpCode == OpCodes.Stfld) {
+							// TODO validate field type
+							if (lastString == "") continue; // TODO hack to avoid breaking on random field init code at the head of the method
+
+							var fieldRef2 = (FieldReference) instr.Operand;
+
+							var fieldInstance = matcher.env.EnvB.GetCreateTypeInstance(fieldRef2.DeclaringType).GetField(fieldRef2.Name, fieldRef2.FieldType.Name);
+
+							var path = lastString;
+							if (path.Contains(".lighting")) path = path.Split(".lighting")[0] + "_lighting";
+							var pathParts = path.Split(".array").First().Split("/").ToArray();
+							var pathIndex = pathParts.Length - 1;
+							var typeInstance = fieldInstance.ContainingType;
+
+							while (pathIndex > 0) {
+								fieldInstance.SuggestedMappedName = pathParts[pathIndex];
+
+								// break before instead of after mapping typeInstance to avoid generating names for the outermost types, since we want to manually map them instead (as TextureAssets, SoundAssets, etc)
+								if (typeInstance.outerType == null) break;
+								typeInstance.SuggestedMappedName = pathParts[pathIndex-1];
+
+
+								fieldInstance = typeInstance.outerType.fieldsOrdered.Where(field => field.fieldType == typeInstance).Single();
+								typeInstance = typeInstance.outerType;
+								pathIndex--;
+							}
+
+							lastString = "";
+						}
+					}
+				}
+			}
+		}
 	}
 
 	private void MatchTextures() {

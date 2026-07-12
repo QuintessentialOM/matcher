@@ -18,7 +18,8 @@ public static class MatcherMain {
 	private static readonly string RunDirectory = "run";
 	private static readonly string ExesDirectory = "run/exes";
 	private static readonly string StringsDirectory = "run/strings";
-	private static readonly string MappingsDirectory = "run/mappings";
+	private static readonly string IntermediaryMappingsDirectory = "run/mappings";
+	private static readonly string NamedMappingsDirectory = "run/named";
 
 	private static string FindFileByMvidOrAlias(string directory, string? mvid, string? alias, string fileExtension) {
 		if (mvid != null) {
@@ -48,14 +49,13 @@ public static class MatcherMain {
 	public static void Main(string[] args) {
 		Directory.CreateDirectory(ExesDirectory);
 		Directory.CreateDirectory(StringsDirectory);
-		Directory.CreateDirectory(MappingsDirectory);
+		Directory.CreateDirectory(IntermediaryMappingsDirectory);
+		Directory.CreateDirectory(NamedMappingsDirectory);
 
-		Console.WriteLine(string.Join(", ", Directory.GetFiles(ExesDirectory)));
+		var matchOntoSelf = true; // whether matching onto self (for testing match stability)
 
-		var matchOntoSelf = false; // whether matching onto self (for testing match stability)
-
-		var versionAliasA = "old";
-		var versionAliasB = matchOntoSelf ? versionAliasA : "ce_20260704_korean";
+		var versionAliasA = "ce_20260709_russianJournal";
+		var versionAliasB = matchOntoSelf ? versionAliasA : "ce_20260709_russianJournal";
 
 		TypeClassifier.Init();
 		MethodClassifier.Init();
@@ -96,7 +96,7 @@ public static class MatcherMain {
 		var stringsPathB = FindFileByMvidOrAlias(StringsDirectory, mvidB, versionAliasB, "csv");
 
 		Mappings? mappingsOld;
-		using (var mappingsStream = File.Open(FindFileByMvidOrAlias(MappingsDirectory, mvidA, versionAliasA, "json"), FileMode.Open)) {
+		using (var mappingsStream = File.Open(FindFileByMvidOrAlias(IntermediaryMappingsDirectory, mvidA, versionAliasA, "json"), FileMode.Open)) {
 			mappingsOld = JsonSerializer.Deserialize<Mappings>(mappingsStream, options)!;
 		}
 
@@ -126,6 +126,8 @@ public static class MatcherMain {
 		var methodHierarchyAToIntermediaryName = new Dictionary<MethodHierarchyData, string?>();
 		var methodHierarchyBToNewlyGeneratedIntermediaryName = new Dictionary<MethodHierarchyData, string>();
 
+		StringBuilder generatedNamedMappings = new("Mapping version: 0.1.0\n\n");
+
 		// preprocessing to collect intermediary names for method hierarchies
 		foreach (var type in matcher.env.EnvA.types.Values) {
 			if (type.IsIgnored() || type.IsArray() || type.CecilTypeReference.IsPointer || type.CecilTypeReference.IsByReference) continue;
@@ -153,6 +155,9 @@ public static class MatcherMain {
 			if (type.IsIgnored() || type.IsArray() || type.CecilTypeReference.IsPointer || type.CecilTypeReference.IsByReference) continue;
 			if (type.CecilTypeReference.IsGenericInstance) continue;
 			if (type.CecilTypeReference.IsGenericParameter) continue; // stored on their owner instead
+
+			StringBuilder generatedNamedMappingsForType = new();
+
 			ClassMapping? classMappingOld = null;
 			if (type.HasMatch()) {
 				classMappingOld = mappingsOld.Classes.Where(cls => cls.ClassFullNameA == type.GetMatch()!.CecilTypeReference.FullName).SingleOrDefault((ClassMapping?) null);
@@ -168,6 +173,7 @@ public static class MatcherMain {
 					classMappingNew.ClassNameB = classMappingOld.ClassNameB;
 				}
 			}
+			if (type.SuggestedMappedName != null) generatedNamedMappingsForType.AppendLine($"{classMappingNew.ClassNameB},{type.SuggestedMappedName}");
 			foreach (var field in type.fieldsOrdered) {
 				FieldMapping? fieldMappingOld = null;
 				if (field.HasMatch()) {
@@ -184,6 +190,7 @@ public static class MatcherMain {
 						fieldMappingNew.FieldNameB = fieldMappingOld.FieldNameB;
 					}
 				}
+				if (field.SuggestedMappedName != null) generatedNamedMappingsForType.AppendLine($"{fieldMappingNew.FieldNameB},{field.SuggestedMappedName}");
 			}
 			foreach (var generic in type.genericParamsOrdered) {
 				GenericParameterMapping? genericMappingOld = null;
@@ -201,6 +208,7 @@ public static class MatcherMain {
 						genericMappingNew.GenericNameB = genericMappingOld.GenericNameB;
 					}
 				}
+				if (generic.SuggestedMappedName != null) generatedNamedMappingsForType.AppendLine($"{genericMappingNew.GenericNameB},{generic.SuggestedMappedName}");
 			}
 			foreach (var method in type.methodsOrdered) {
 				MethodMapping? methodMappingOld = null;
@@ -232,6 +240,7 @@ public static class MatcherMain {
 						methodMappingNew.MethodNameB = methodHierarchyAToIntermediaryName[method.hierarchyData.MatchedHierarchy!];
 					}
 				}
+				if (method.SuggestedMappedName != null) generatedNamedMappingsForType.AppendLine($"{methodMappingNew.MethodNameB},{method.SuggestedMappedName}");
 
 				foreach (var generic in method.genericParamsOrdered) {
 					GenericParameterMapping? genericMappingOld = null;
@@ -249,6 +258,7 @@ public static class MatcherMain {
 							genericMappingNew.GenericNameB = genericMappingOld.GenericNameB;
 						}
 					}
+					if (generic.SuggestedMappedName != null) generatedNamedMappingsForType.AppendLine($"{genericMappingNew.GenericNameB},{generic.SuggestedMappedName}");
 				}
 
 				foreach (var param in method.args) {
@@ -267,14 +277,21 @@ public static class MatcherMain {
 							paramMappingNew.ParameterNameB = paramMappingOld.ParameterNameB;
 						}
 					}
+					if (param.SuggestedMappedName != null) generatedNamedMappingsForType.AppendLine($"{paramMappingNew.ParameterNameB},{param.SuggestedMappedName}");
 				}
+			}
+			if (generatedNamedMappingsForType.Length > 0) {
+				generatedNamedMappings.AppendLine();
+				generatedNamedMappings.AppendLine($"## {type.SuggestedMappedName ?? classMappingNew.ClassNameB}");
+				generatedNamedMappings.Append(generatedNamedMappingsForType);
 			}
 		}
 
 		if (!matchOntoSelf) {
-			using (var mappingsStream = File.Open(Path.Join(MappingsDirectory, $"mappings_{versionAliasB}_{mvidB}.json"), FileMode.Create)) {
+			using (var mappingsStream = File.Open(Path.Join(IntermediaryMappingsDirectory, $"mappings_{versionAliasB}_{mvidB}.json"), FileMode.Create)) {
 				JsonSerializer.Serialize(mappingsStream, mappingsNew, options);
 			}
 		}
+		File.WriteAllText(Path.Join(NamedMappingsDirectory, $"named_{versionAliasB}_{mvidB}.txt"), generatedNamedMappings.ToString());
 	}
 }
