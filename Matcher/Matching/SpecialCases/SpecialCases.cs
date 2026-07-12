@@ -589,6 +589,12 @@ public class SpecialCases {
 		matcher.MatchType(sdlEventA, sdlEventB);
 		matcher.MatchType(sdlKeyA, sdlKeyB);
 		matcher.MatchType(sdlEventTypeA, sdlEventTypeB);
+
+		// match SDL_Event fields by order
+		foreach(var (a, b) in sdlEventA.fieldsOrdered.Zip(sdlEventB.fieldsOrdered)) {
+			matcher.MatchField(a, b);
+		}
+
 		Console.WriteLine("Matched the obfuscated parts of SDL we need and ignored the rest");
 	}
 
