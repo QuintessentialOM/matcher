@@ -37,7 +37,7 @@ public class LocalClassEnv {
 	public TypeInstance? GetCreateTypeInstance(TypeReference type, bool createUnknown) {
 		if (types.ContainsKey(type.FullName)) return types[type.FullName];
 		if (!createUnknown) return null;
-		types[type.FullName] = new TypeInstance(this, type, !Matcher.NonObfuscatedPattern.IsMatch(type.Name));
+		types[type.FullName] = new TypeInstance(this, type, !Matcher.IsTypeFullNameDeobfuscated(type));
 		return types[type.FullName];
 	}
 

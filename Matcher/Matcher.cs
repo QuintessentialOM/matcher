@@ -26,6 +26,17 @@ public class Matcher {
 		this.mappingsA = mappingsA;
 	}
 
+	public static bool IsTypeFullNameDeobfuscated(TypeReference type) {
+		if (!NonObfuscatedPattern.IsMatch(type.Name)) return false;
+		if (type.IsGenericInstance) {
+			foreach (var generic in ((GenericInstanceType) type).GenericArguments) {
+				if (!IsTypeFullNameDeobfuscated(generic)) return false;
+			}
+		}
+		if (type.DeclaringType != null && !IsTypeFullNameDeobfuscated(type.DeclaringType)) return false;
+		return true;
+	}
+
 
 	static Collection<TypeDefinition> CollectNestedTypes(Collection<TypeDefinition> topLevel) {
 		var types = new Collection<TypeDefinition>();
@@ -924,6 +935,13 @@ public class Matcher {
 				TypeInstance match = ranking[0].Subject;
 
 				matches[cls] = match;
+			} else if (level == ClassifierLevel.Extra) {
+				// Console.WriteLine($"matching type {cls.CecilTypeReference.FullName} ranking:");
+				// Console.WriteLine(string.Join("\n", ranking.Select(res => $"{res.Score}/{maxScore} (min {ClassifierUtil.GetRawScore(absThreshold, maxScore)}) {res.Subject.CecilTypeReference.FullName}")));
+				// // if (ranking.Count == 1) {
+				// 	Console.WriteLine(string.Join("\n", ranking[0].Results.Select(res => res.ToString())));
+				// // }
+				// Console.WriteLine();
 			}
 		}
 
@@ -1073,6 +1091,14 @@ public class Matcher {
 
 					ret[member] = match;
 				} else {
+					// if (level == ClassifierLevel.Extra) {
+					// 	Console.WriteLine($"matching member {((MatchableMember) (object) member).CecilMemberReference.FullName} ranking:");
+					// 	Console.WriteLine(string.Join("\n", ranking.Select(res => $"{res.Score}/{maxScore} (min {ClassifierUtil.GetRawScore(absThreshold, maxScore)}) { ((MatchableMember) (object) res.Subject).CecilMemberReference.FullName}")));
+					// 	// if (ranking.Count == 1) {
+					// 		Console.WriteLine(string.Join("\n", ranking[0].Results.Select(res => res.ToString())));
+					// 	// }
+					// 	Console.WriteLine();
+					// }
 					unmatched++;
 				}
 			}
