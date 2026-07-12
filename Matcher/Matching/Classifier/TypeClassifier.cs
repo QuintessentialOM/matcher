@@ -7,7 +7,7 @@ public class TypeClassifier {
 	public static void Init() {
 		// Normal subgroup
 		AddClassifier(classTypeCheck, 20, TypeSubgroup.Normal);
-		// AddClassifier(signature, 5); // <- this one seems to be generic params, and also compares superclass + interface signatures
+		AddClassifier(genericParamsCount, 5, TypeSubgroup.Normal); // <- the original matcher has "signature", which seems to be generic params, and also compares superclass + interface signatures
 		AddClassifier(hierarchyDepth, 1, TypeSubgroup.Normal);
 		AddClassifier(parentClass, 4, TypeSubgroup.Normal);
 		AddClassifier(childClasses, 3, TypeSubgroup.Normal);
@@ -32,7 +32,7 @@ public class TypeClassifier {
 		AddClassifier(inRefsBci, 6, TypeSubgroup.Normal, ClassifierLevel.Extra);
 		// Enum subgroup
 		AddClassifier(outerClass, 6, TypeSubgroup.Enum);
-		AddClassifier(position, 3, TypeSubgroup.Enum);
+		// AddClassifier(position, 3, TypeSubgroup.Enum);
 		AddClassifier(fieldCount, 3, TypeSubgroup.Enum);
 		AddClassifier(inReferences, 6, TypeSubgroup.Enum);
 		AddClassifier(inReferencesByMethod, 5, TypeSubgroup.Enum, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
@@ -103,16 +103,10 @@ public class TypeClassifier {
 		}
 	);
 
-	// private static readonly AbstractClassifier signature = new("signature", (clsA, clsB, env) => {
-	// 		ClassSignature sigA = clsA.getSignature();
-	// 		ClassSignature sigB = clsB.getSignature();
-
-	// 		if (sigA == null && sigB == null) return 1;
-	// 		if (sigA == null || sigB == null) return 0;
-
-	// 		return sigA.isPotentiallyEqual(sigB) ? 1 : 0;
-	// 	}
-	// );
+	private static readonly AbstractClassifier genericParamsCount = new("generic parameter count", (clsA, clsB, env) => {
+			return ClassifierUtil.CompareCounts(clsA.genericParamsOrdered.Count, clsB.genericParamsOrdered.Count);
+		}
+	);
 
 	private static readonly AbstractClassifier hierarchyDepth = new("hierarchy depth", (clsA, clsB, env) => {
 			int countA = 0;
