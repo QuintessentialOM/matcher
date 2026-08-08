@@ -11,8 +11,8 @@ using Mono.Cecil.Cil;
 namespace Matcher;
 
 public class Matcher {
-	// Matches normal type/member names and also `<>c`, since some generated classes are named `<>c`
-	public static readonly Regex NonObfuscatedPattern = new("^([a-zA-Z_\\`][a-zA-Z0-9_\\`]*(\\[])*|<>c)$");
+	// Matches normal type/member names, `<Module>`, and also `<>c`, since some generated classes are named `<>c`
+	public static readonly Regex NonObfuscatedPattern = new("^(?:[a-zA-Z_\\`][a-zA-Z0-9_\\`]*(\\[])*|<>c|<Module>)$");
 
 	public MatchingEnv env;
 	readonly LocalClassEnv envA;

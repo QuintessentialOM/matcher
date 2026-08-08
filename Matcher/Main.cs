@@ -125,8 +125,8 @@ public static class MatcherMain {
 
 		matcher.LogMissingMatches(true);
 
-		// // Ignore non-obf names, except for the generated <> stuff
-		var deobfPattern = new Regex("^[a-zA-Z_\\`][a-zA-Z0-9_\\`]*(\\[])*$");
+		// // Ignore non-obf names, except for the generated <> stuff. <Module> is not renamed as this breaks things.
+		var deobfPattern = new Regex("^(?:[a-zA-Z_\\`][a-zA-Z0-9_\\`]*(\\[])*)|<Module>$");
 
 		var methodHierarchyAToIntermediaryName = new Dictionary<MethodHierarchyData, string?>();
 		var methodHierarchyBToNewlyGeneratedIntermediaryName = new Dictionary<MethodHierarchyData, string>();
