@@ -52,8 +52,8 @@ public class Matcher {
 	}
 
 	public void Init(ModuleDefinition moduleA, ModuleDefinition moduleB, List<string> stringsPathsA, List<string> stringsPathsB) {
-		var stringDeobfNameA = FindStringDeobfMethod(moduleA.EntryPoint).Split(".")[1];
-		var stringDeobfNameB = FindStringDeobfMethod(moduleB.EntryPoint).Split(".")[1];
+		var stringDeobfNameA = FindStringDeobfMethod(moduleA.EntryPoint).Item2;
+		var stringDeobfNameB = FindStringDeobfMethod(moduleB.EntryPoint).Item2;
 		Console.WriteLine("Inlining strings for module A");
 		InlineStrings(moduleA, stringDeobfNameA, LoadStrings(stringsPathsA));
 		Console.WriteLine("Inlining strings for module B");
@@ -1398,15 +1398,15 @@ public class Matcher {
 		}
 	}
 
-	public static string FindStringDeobfMethod(MethodDefinition mainMethod) {
+	public static (string, string) FindStringDeobfMethod(MethodDefinition mainMethod) {
 		if (mainMethod.Body != null && mainMethod.Body.Instructions != null) {
-			var candidateMethods = new HashSet<string>();
+			var candidateMethods = new HashSet<(string, string)>();
 			foreach (var instr in mainMethod.Body.Instructions) {
 				if (instr.Operand is MethodReference methodRef && methodRef.Resolve() != null) {
 					var method = methodRef.Resolve();
 					// deobf method should be a static method of signature (int) => string
 					if (method.IsStatic && method.Parameters.Count == 1 && method.Parameters[0].ParameterType.FullName == "System.Int32" && method.ReturnType.FullName == "System.String") {
-						candidateMethods.Add($"{method.DeclaringType.Name}.{method.Name}");
+						candidateMethods.Add((method.DeclaringType.Name, method.Name));
 					}
 				}
 			}

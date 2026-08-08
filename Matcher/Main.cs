@@ -21,7 +21,8 @@ public static class MatcherMain {
 	private static readonly string IntermediaryMappingsDirectory = "run/mappings";
 	private static readonly string NamedMappingsDirectory = "run/named";
 
-	private static string FindFileByMvidOrAlias(string directory, string? mvid, string? alias, string fileExtension) {
+
+	private static string? MaybeFindFileByMvidOrAlias(string directory, string? mvid, string? alias, string fileExtension) {
 		if (mvid != null) {
 			var byMvid = Directory.GetFiles(directory, $"*{mvid}*.{fileExtension}");
 			if (byMvid.Length > 0) {
@@ -36,7 +37,11 @@ public static class MatcherMain {
 				return mvid != null ? AddMvidToFileNameIfAbsent(mvid, byAlias[0]) : byAlias[0];
 			}
 		}
-		throw new Exception($"Failed to find input file; mvid {mvid ?? "[none]"} alias {alias ?? "[none]"} extension {fileExtension} directory {directory}");
+		return null;
+	}
+
+	private static string FindFileByMvidOrAlias(string directory, string? mvid, string? alias, string fileExtension) {
+		return MaybeFindFileByMvidOrAlias(directory, mvid, alias, fileExtension) ?? throw new Exception($"Failed to find input file; mvid {mvid ?? "[none]"} alias {alias ?? "[none]"} extension {fileExtension} directory {directory}");
 	}
 
 	private static string AddMvidToFileNameIfAbsent(string mvid, string filePath) {
@@ -52,10 +57,10 @@ public static class MatcherMain {
 		Directory.CreateDirectory(IntermediaryMappingsDirectory);
 		Directory.CreateDirectory(NamedMappingsDirectory);
 
-		var matchOntoSelf = true; // whether matching onto self (for testing match stability)
+		var matchOntoSelf = false; // whether matching onto self (for testing match stability)
 
 		var versionAliasA = "ce_20260709_russianJournal";
-		var versionAliasB = matchOntoSelf ? versionAliasA : "ce_20260709_russianJournal";
+		var versionAliasB = matchOntoSelf ? versionAliasA : "ce_20260729";
 
 		TypeClassifier.Init();
 		MethodClassifier.Init();
@@ -92,8 +97,8 @@ public static class MatcherMain {
 			moduleB = ModuleDefinition.ReadModule(modulePathB);
 		}
 
-		var stringsPathA = FindFileByMvidOrAlias(StringsDirectory, mvidA, versionAliasA, "csv");
-		var stringsPathB = FindFileByMvidOrAlias(StringsDirectory, mvidB, versionAliasB, "csv");
+		var stringsPathA = MaybeFindFileByMvidOrAlias(StringsDirectory, mvidA, versionAliasA, "csv") ?? StringDumping.DumpStrings(StringsDirectory, mvidA, versionAliasA, moduleA);
+		var stringsPathB = MaybeFindFileByMvidOrAlias(StringsDirectory, mvidB, versionAliasB, "csv") ?? StringDumping.DumpStrings(StringsDirectory, mvidB, versionAliasB, moduleB);
 
 		Mappings? mappingsOld;
 		using (var mappingsStream = File.Open(FindFileByMvidOrAlias(IntermediaryMappingsDirectory, mvidA, versionAliasA, "json"), FileMode.Open)) {
