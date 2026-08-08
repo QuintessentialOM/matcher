@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Matcher.Matching;
@@ -97,7 +98,10 @@ public class SpecialCases {
 		// var musicClassA = FindTypeAFromIntermediary(musicIntermediary);
 		// var musicClassB = musicClassA.GetMatch() ?? throw new Exception("music class match not found");
 
+		var textInfo = new CultureInfo("en-US",false).TextInfo;
+
 		foreach (var rootType in new TypeInstance[] {texturesClassB, soundsClassB/*, musicClassB*/}) {
+			var typeSuffix = rootType == texturesClassB ? "Textures" : rootType == soundsClassB ? "Sounds" : throw new Exception("unreachable");
 			var lastString = "";
 			foreach (var method in rootType.methodsOrdered) {
 				if (method.CecilMethod?.Body?.Instructions != null) {
@@ -127,7 +131,7 @@ public class SpecialCases {
 
 								// break before instead of after mapping typeInstance to avoid generating names for the outermost types, since we want to manually map them instead (as TextureAssets, SoundAssets, etc)
 								if (typeInstance.outerType == null) break;
-								typeInstance.SuggestedMappedName = pathParts[pathIndex-1];
+								typeInstance.SuggestedMappedName = string.Concat(pathParts[pathIndex-1].Split("_").Select(textInfo.ToTitleCase)) + typeSuffix;
 
 
 								fieldInstance = typeInstance.outerType.fieldsOrdered.Where(field => field.fieldType == typeInstance).Single();
