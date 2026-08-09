@@ -144,7 +144,7 @@ public static class MatcherMain {
 		var methodHierarchyAToIntermediaryName = new Dictionary<MethodHierarchyData, string?>();
 		var methodHierarchyBToNewlyGeneratedIntermediaryName = new Dictionary<MethodHierarchyData, string>();
 
-		StringBuilder generatedNamedMappings = new("Mapping version: 0.1.0\n\n");
+		List<string> generatedNamedMappings = [];
 
 		// preprocessing to collect intermediary names for method hierarchies
 		foreach (var type in matcher.env.EnvA.types.Values) {
@@ -299,9 +299,7 @@ public static class MatcherMain {
 				}
 			}
 			if (generatedNamedMappingsForType.Length > 0) {
-				generatedNamedMappings.AppendLine();
-				generatedNamedMappings.AppendLine($"## {type.SuggestedMappedName ?? classMappingNew.ClassNameB}");
-				generatedNamedMappings.Append(generatedNamedMappingsForType);
+				generatedNamedMappings.Add($"## {type.SuggestedMappedName ?? classMappingNew.ClassNameB}\n" + generatedNamedMappingsForType.ToString());
 			}
 		}
 
@@ -310,6 +308,10 @@ public static class MatcherMain {
 				JsonSerializer.Serialize(mappingsStream, mappingsNew, options);
 			}
 		}
-		File.WriteAllText(Path.Join(NamedMappingsDirectory, $"named_{versionAliasB}_{mvidB}.txt"), generatedNamedMappings.ToString());
+
+		// sort generated names for deterministic order to reduce diff churn
+		generatedNamedMappings.Sort();
+		generatedNamedMappings.Insert(0, "Mapping version: 0.1.0\n\n");
+		File.WriteAllText(Path.Join(NamedMappingsDirectory, $"named_{versionAliasB}_{mvidB}.txt"), string.Join("\n", generatedNamedMappings));
 	}
 }
