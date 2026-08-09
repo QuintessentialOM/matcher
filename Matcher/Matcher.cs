@@ -1417,4 +1417,50 @@ public class Matcher {
 		}
 		throw new Exception("Failed to find string deobf method");
 	}
+
+	public TypeInstance FindTypeAFromIntermediary(string intermediaryName) {
+		var obfName = mappingsA.Classes.Where(cls => cls.ClassNameB == intermediaryName).Single().ClassFullNameA;
+		return env.EnvA.types.Values.Where(type => type.CecilTypeReference.FullName == obfName).Single();
+	}
+
+	public MethodInstance FindMethodAFromIntermediary(TypeInstance typeA, string intermediaryName) {
+		var obfName = mappingsA.Classes.Where(cls => cls.ClassFullNameA == typeA.CecilTypeReference.FullName).Single().Methods.Where(method => method.MethodNameB == intermediaryName).Single().MethodNameA;
+		return typeA.GetMethod(obfName, null)!;
+	}
+
+	public FieldInstance FindFieldAFromIntermediary(TypeInstance typeA, string intermediaryName) {
+		var obfName = mappingsA.Classes.Where(cls => cls.ClassFullNameA == typeA.CecilTypeReference.FullName).Single().Fields.Where(field => field.FieldNameB == intermediaryName).Single().FieldNameA;
+		return typeA.GetField(obfName, null)!;
+	}
+
+	public string GetIntermediaryForTypeA(TypeInstance typeInstance) {
+		return GetIntermediaryForTypeA(typeInstance.CecilTypeReference);
+	}
+
+	public string GetIntermediaryForTypeA(TypeReference typeReference) {
+		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == typeReference.FullName).SingleOrDefault((ClassMapping?) null);
+		return cls?.ClassNameB ?? "???";
+	}
+
+	public string GetIntermediaryForFieldA(FieldInstance fieldInstance) {
+		return GetIntermediaryForFieldA(fieldInstance.CecilField);
+	}
+
+	public string GetIntermediaryForFieldA(FieldReference fieldReference) {
+		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == fieldReference.DeclaringType.FullName).SingleOrDefault((ClassMapping?) null);
+		if (cls == null) return "???";
+		var fieldName = cls.Fields.Where(field => field.FieldNameA == fieldReference.Name).SingleOrDefault((FieldMapping?) null);
+		return fieldName?.FieldNameB ?? "???";
+	}
+
+	public string GetIntermediaryForMethodA(MethodInstance methodInstance) {
+		return GetIntermediaryForMethodA(methodInstance.CecilMethod);
+	}
+
+	public string GetIntermediaryForMethodA(MethodReference methodReference) {
+		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == methodReference.DeclaringType.FullName).SingleOrDefault((ClassMapping?) null);
+		if (cls == null) return "???";
+		var methodName = cls.Methods.Where(method => method.MethodNameA == methodReference.Name).SingleOrDefault((MethodMapping?) null);
+		return methodName?.MethodNameB ?? "???";
+	}
 }

@@ -36,61 +36,15 @@ public class SpecialCases {
 		GenerateSuggestedAssetNames();
 	}
 
-	private TypeInstance FindTypeAFromIntermediary(string intermediaryName) {
-		var obfName = mappingsA.Classes.Where(cls => cls.ClassNameB == intermediaryName).Single().ClassFullNameA;
-		return matcher.env.EnvA.types.Values.Where(type => type.CecilTypeReference.FullName == obfName).Single();
-	}
-
-	private MethodInstance FindMethodAFromIntermediary(TypeInstance typeA, string intermediaryName) {
-		var obfName = mappingsA.Classes.Where(cls => cls.ClassFullNameA == typeA.CecilTypeReference.FullName).Single().Methods.Where(method => method.MethodNameB == intermediaryName).Single().MethodNameA;
-		return typeA.GetMethod(obfName, null)!;
-	}
-
-	private FieldInstance FindFieldAFromIntermediary(TypeInstance typeA, string intermediaryName) {
-		var obfName = mappingsA.Classes.Where(cls => cls.ClassFullNameA == typeA.CecilTypeReference.FullName).Single().Fields.Where(field => field.FieldNameB == intermediaryName).Single().FieldNameA;
-		return typeA.GetField(obfName, null)!;
-	}
-
-	private string GetIntermediaryForTypeA(TypeInstance typeInstance) {
-		return GetIntermediaryForTypeA(typeInstance.CecilTypeReference);
-	}
-
-	private string GetIntermediaryForTypeA(TypeReference typeReference) {
-		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == typeReference.FullName).SingleOrDefault((ClassMapping?) null);
-		return cls?.ClassNameB ?? "???";
-	}
-
-	private string GetIntermediaryForFieldA(FieldInstance fieldInstance) {
-		return GetIntermediaryForFieldA(fieldInstance.CecilField);
-	}
-
-	private string GetIntermediaryForFieldA(FieldReference fieldReference) {
-		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == fieldReference.DeclaringType.FullName).SingleOrDefault((ClassMapping?) null);
-		if (cls == null) return "???";
-		var fieldName = cls.Fields.Where(field => field.FieldNameA == fieldReference.Name).SingleOrDefault((FieldMapping?) null);
-		return fieldName?.FieldNameB ?? "???";
-	}
-
-	private string GetIntermediaryForMethodA(MethodInstance methodInstance) {
-		return GetIntermediaryForMethodA(methodInstance.CecilMethod);
-	}
-
-	private string GetIntermediaryForMethodA(MethodReference methodReference) {
-		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == methodReference.DeclaringType.FullName).SingleOrDefault((ClassMapping?) null);
-		if (cls == null) return "???";
-		var methodName = cls.Methods.Where(method => method.MethodNameA == methodReference.Name).SingleOrDefault((MethodMapping?) null);
-		return methodName?.MethodNameB ?? "???";
-	}
-
 	private void GenerateSuggestedAssetNames() {
 		Regex frameCount = new("_[0-9]{4}");
 
 		const string texturesIntermediary = "class_17";
-		var texturesClassA = FindTypeAFromIntermediary(texturesIntermediary);
+		var texturesClassA = matcher.FindTypeAFromIntermediary(texturesIntermediary);
 		var texturesClassB = texturesClassA.GetMatch() ?? throw new Exception("textures class match not found");
 
 		const string soundsIntermediary = "class_201";
-		var soundsClassA = FindTypeAFromIntermediary(soundsIntermediary);
+		var soundsClassA = matcher.FindTypeAFromIntermediary(soundsIntermediary);
 		var soundsClassB = soundsClassA.GetMatch() ?? throw new Exception("sounds class match not found");
 
 		// Music is excluded so the music tracks can be manually mapped instead, since the file names are not the actual track names
@@ -158,7 +112,7 @@ public class SpecialCases {
 
 		Regex frameCount = new("_[0-9]{4}");
 
-		var texturesClassA = FindTypeAFromIntermediary(texturesIntermediary);
+		var texturesClassA = matcher.FindTypeAFromIntermediary(texturesIntermediary);
 		// var textureClassA = FindTypeAFromIntermediary(textureIntermediary);
 		// var assetLoadingClassA = FindTypeAFromIntermediary(assetLoadingIntermediary);
 
@@ -220,7 +174,7 @@ public class SpecialCases {
 			if (!textureFieldsByIdA.ContainsKey(textureKey)) {
 				Console.WriteLine($"Unmatched texture field in assembly B: {textureKey} -> {textureFieldsByIdB[textureKey].FullName}");
 			} else if (!textureFieldsByIdB.ContainsKey(textureKey)) {
-				Console.WriteLine($"Unmatched texture field in assembly A: {textureKey} -> {GetIntermediaryForFieldA(textureFieldsByIdA[textureKey])} ({textureFieldsByIdA[textureKey].FullName})");
+				Console.WriteLine($"Unmatched texture field in assembly A: {textureKey} -> {matcher.GetIntermediaryForFieldA(textureFieldsByIdA[textureKey])} ({textureFieldsByIdA[textureKey].FullName})");
 			} else {
 				fieldMatchCandidates.Add(textureFieldsByIdA[textureKey], textureFieldsByIdB[textureKey]);
 			}
@@ -266,7 +220,7 @@ public class SpecialCases {
 	private void MatchClass9() {
 		const string class9Intermediary = "class_9";
 
-		var class9A = FindTypeAFromIntermediary(class9Intermediary);
+		var class9A = matcher.FindTypeAFromIntermediary(class9Intermediary);
 		var class9B = class9A.GetMatch();
 		if (class9B == null) throw new Exception("class_9 match not found");
 
@@ -287,7 +241,7 @@ public class SpecialCases {
 			if (!structsABySize.ContainsKey(size)) {
 				Console.WriteLine($"Unmatched struct in assembly B: {structsBBySize[size].CecilTypeReference.FullName}");
 			} else if (!structsBBySize.ContainsKey(size)) {
-				Console.WriteLine($"Unmatched struct in assembly A: {GetIntermediaryForTypeA(structsABySize[size])} ({structsABySize[size].CecilTypeReference.FullName})");
+				Console.WriteLine($"Unmatched struct in assembly A: {matcher.GetIntermediaryForTypeA(structsABySize[size])} ({structsABySize[size].CecilTypeReference.FullName})");
 			} else {
 				matcher.MatchType(structsABySize[size], structsBBySize[size]);
 				count++;
@@ -313,7 +267,7 @@ public class SpecialCases {
 			if (!fieldsAByData.ContainsKey(data)) {
 				Console.WriteLine($"Unmatched field in assembly B: {fieldsBByData[data].CecilField!.FullName}");
 			} else if (!fieldsBByData.ContainsKey(data)) {
-				Console.WriteLine($"Unmatched field in assembly A: {GetIntermediaryForFieldA(fieldsAByData[data])} ({fieldsAByData[data].CecilField!.FullName})");
+				Console.WriteLine($"Unmatched field in assembly A: {matcher.GetIntermediaryForFieldA(fieldsAByData[data])} ({fieldsAByData[data].CecilField!.FullName})");
 			} else {
 				matcher.MatchField(fieldsAByData[data], fieldsBByData[data]);
 				count++;
@@ -329,12 +283,12 @@ public class SpecialCases {
 		// const string method149Intermediary = "method_149";
 		const string method150Intermediary = "method_150";
 
-		var class111A = FindTypeAFromIntermediary(class111Intermediary);
+		var class111A = matcher.FindTypeAFromIntermediary(class111Intermediary);
 		var class111B = class111A.GetMatch();
 		if (class111B == null) throw new Exception("class_111 match not found");
 
 		// var method149A = FindMethodAFromIntermediary(class111A, method149Intermediary);
-		var method150A = FindMethodAFromIntermediary(class111A, method150Intermediary);
+		var method150A = matcher.FindMethodAFromIntermediary(class111A, method150Intermediary);
 
 		// var method149B = method149A.GetMatch();
 		var method150B = method150A.GetMatch();
@@ -372,7 +326,7 @@ public class SpecialCases {
 			if (!glMethodNameToFieldA.ContainsKey(data)) {
 				Console.WriteLine($"Unmatched gl function in assembly B: {glMethodNameToFieldB[data].FullName}");
 			} else if (!glMethodNameToFieldB.ContainsKey(data)) {
-				Console.WriteLine($"Unmatched gl function in assembly A: {GetIntermediaryForFieldA(glMethodNameToFieldA[data])} ({glMethodNameToFieldA[data].FullName})");
+				Console.WriteLine($"Unmatched gl function in assembly A: {matcher.GetIntermediaryForFieldA(glMethodNameToFieldA[data])} ({glMethodNameToFieldA[data].FullName})");
 			} else {
 				var delegateA = matcher.env.EnvA.GetCreateTypeInstance(glMethodNameToFieldA[data].FieldType);
 				var delegateB = matcher.env.EnvB.GetCreateTypeInstance(glMethodNameToFieldB[data].FieldType);
@@ -423,9 +377,9 @@ public class SpecialCases {
 		// Class with bindings to D3D11 methods; inner class of the above class
 		const string class247Intermediary = "class_247";
 
-		var class246A = FindTypeAFromIntermediary(class246Intermediary);
+		var class246A = matcher.FindTypeAFromIntermediary(class246Intermediary);
 		var class246B = class246A.GetMatch() ?? throw new Exception("class_246 match not found");
-		var class247A = FindTypeAFromIntermediary(class247Intermediary);
+		var class247A = matcher.FindTypeAFromIntermediary(class247Intermediary);
 		var class247B = class247A.GetMatch() ?? throw new Exception("class_247 match not found");
 
 		var dllMethodsByEntrypointA = new Dictionary<string, MethodInstance>();
@@ -445,7 +399,7 @@ public class SpecialCases {
 			if (!dllMethodsByEntrypointA.ContainsKey(entrypoint)) {
 				Console.WriteLine($"Unmatched method in assembly B: {dllMethodsByEntrypointB[entrypoint].CecilMethod!.FullName}");
 			} else if (!dllMethodsByEntrypointB.ContainsKey(entrypoint)) {
-				Console.WriteLine($"Unmatched method in assembly A: {GetIntermediaryForMethodA(dllMethodsByEntrypointA[entrypoint])} ({dllMethodsByEntrypointA[entrypoint].CecilMethod!.FullName})");
+				Console.WriteLine($"Unmatched method in assembly A: {matcher.GetIntermediaryForMethodA(dllMethodsByEntrypointA[entrypoint])} ({dllMethodsByEntrypointA[entrypoint].CecilMethod!.FullName})");
 			} else {
 				matcher.MatchMethod(
 					dllMethodsByEntrypointA[entrypoint],
@@ -482,7 +436,7 @@ public class SpecialCases {
 			if (!wrapperMethodsByCalledEntrypointA.ContainsKey(entrypoint)) {
 				Console.WriteLine($"Unmatched method in assembly B: {wrapperMethodsByCalledEntrypointB[entrypoint].CecilMethod!.FullName}");
 			} else if (!wrapperMethodsByCalledEntrypointB.ContainsKey(entrypoint)) {
-				Console.WriteLine($"Unmatched method in assembly A: {GetIntermediaryForMethodA(wrapperMethodsByCalledEntrypointA[entrypoint])} ({wrapperMethodsByCalledEntrypointA[entrypoint].CecilMethod!.FullName})");
+				Console.WriteLine($"Unmatched method in assembly A: {matcher.GetIntermediaryForMethodA(wrapperMethodsByCalledEntrypointA[entrypoint])} ({wrapperMethodsByCalledEntrypointA[entrypoint].CecilMethod!.FullName})");
 			} else {
 				matcher.MatchMethod(
 					wrapperMethodsByCalledEntrypointA[entrypoint],
@@ -500,8 +454,8 @@ public class SpecialCases {
 		const string class300Intermediary = "class_300";
 		const string field2332Intermediary = "field_2332";
 		// const string field2342Intermediary = "field_2342";
-		var class300A = FindTypeAFromIntermediary(class300Intermediary);
-		var field2332A = FindFieldAFromIntermediary(class300A, field2332Intermediary);
+		var class300A = matcher.FindTypeAFromIntermediary(class300Intermediary);
+		var field2332A = matcher.FindFieldAFromIntermediary(class300A, field2332Intermediary);
 		// var field2342A = FindFieldAFromIntermediary(class300A, field2342Intermediary);
 		
 		var class300B = class300A.GetMatch();
@@ -563,7 +517,7 @@ public class SpecialCases {
 			if (!constructedTypesBySetFieldValueA.ContainsKey(intConst)) {
 				Console.WriteLine($"Unmatched type in assembly B: {constructedTypesBySetFieldValueB[intConst].FullName}");
 			} else if (!constructedTypesBySetFieldValueB.ContainsKey(intConst)) {
-				Console.WriteLine($"Unmatched type in assembly A: {GetIntermediaryForTypeA(constructedTypesBySetFieldValueA[intConst])} ({constructedTypesBySetFieldValueA[intConst].FullName})");
+				Console.WriteLine($"Unmatched type in assembly A: {matcher.GetIntermediaryForTypeA(constructedTypesBySetFieldValueA[intConst])} ({constructedTypesBySetFieldValueA[intConst].FullName})");
 			} else {
 				matcher.MatchType(
 					matcher.env.EnvA.GetCreateTypeInstance(constructedTypesBySetFieldValueA[intConst]),
@@ -576,7 +530,7 @@ public class SpecialCases {
 	}
 
 	private void MatchStructFieldsByOrder() {
-		var struct31A = FindTypeAFromIntermediary("struct_31");
+		var struct31A = matcher.FindTypeAFromIntermediary("struct_31");
 		var matrix4A = matcher.env.EnvA.types["Matrix4"];
 
 		var struct31B = struct31A.GetMatch() ?? throw new Exception("expected struct_31 to be matched");
@@ -614,7 +568,7 @@ public class SpecialCases {
 			if (!fieldsByGenericParamA.ContainsKey(genericParam)) {
 				Console.WriteLine($"Unmatched field in assembly B: {fieldsByGenericParamB[genericParam].FullName}");
 			} else if (!fieldsByGenericParamB.ContainsKey(genericParam)) {
-				Console.WriteLine($"Unmatched field in assembly A: {GetIntermediaryForFieldA(fieldsByGenericParamA[genericParam])} ({fieldsByGenericParamA[genericParam].FullName})");
+				Console.WriteLine($"Unmatched field in assembly A: {matcher.GetIntermediaryForFieldA(fieldsByGenericParamA[genericParam])} ({fieldsByGenericParamA[genericParam].FullName})");
 			} else {
 				matcher.MatchField(
 						steamA.GetField(fieldsByGenericParamA[genericParam].Name, fieldsByGenericParamA[genericParam].FieldType.Name)!,
@@ -630,9 +584,9 @@ public class SpecialCases {
 		matcher.env.EnvA.types["SDL2.SDL"].MarkIgnoredRecursive(true);
 		matcher.env.EnvB.types["SDL2.SDL"].MarkIgnoredRecursive(true);
 
-		var sdlEventA = FindTypeAFromIntermediary("struct_103");
-		var sdlKeyA = FindTypeAFromIntermediary("enum_160");
-		var sdlEventTypeA = FindTypeAFromIntermediary("enum_175");
+		var sdlEventA = matcher.FindTypeAFromIntermediary("struct_103");
+		var sdlKeyA = matcher.FindTypeAFromIntermediary("enum_160");
+		var sdlEventTypeA = matcher.FindTypeAFromIntermediary("enum_175");
 
 		var sdlB = matcher.env.EnvB.types["SDL2.SDL"];
 
@@ -790,7 +744,7 @@ public class SpecialCases {
 				foreach (var (a, b) in lambdasAOrdered.Zip(lambdasBOrdered)) {
 					matcher.MatchType(a, b);
 					matchedLambdaClassCount += 1;
-					Console.WriteLine($"Matched lambda generated class: {GetIntermediaryForTypeA(a)} ({a.CecilTypeReference.FullName}) -> {b.CecilTypeReference.FullName}");
+					Console.WriteLine($"Matched lambda generated class: {matcher.GetIntermediaryForTypeA(a)} ({a.CecilTypeReference.FullName}) -> {b.CecilTypeReference.FullName}");
 					if (a.methodsOrdered.Count != b.methodsOrdered.Count) continue;
 					if (a.methodsOrdered.Count == 2) {
 						matcher.MatchMethod(a.methodsOrdered.Where(m => m.GetName() != ".ctor").Single(), b.methodsOrdered.Where(m => m.GetName() != ".ctor").Single());
@@ -825,7 +779,7 @@ public class SpecialCases {
 		// These might be the same kind of generated inner class as <>c but obfuscated - unsure.
 		List<string> intermediaryClassNames = ["class_143", "class_146", "class_363", "class_411"];
 		foreach (var intermediary in intermediaryClassNames) {
-			var clsA = FindTypeAFromIntermediary(intermediary);
+			var clsA = matcher.FindTypeAFromIntermediary(intermediary);
 			if (clsA.HasMatch()) {
 				MatchClassMethodsBySingleInvocationSite(clsA, clsA.GetMatch()!);
 				MatchClassFieldsBySingleReadSite(clsA, clsA.GetMatch()!);
