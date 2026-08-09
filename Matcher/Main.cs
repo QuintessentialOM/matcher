@@ -105,7 +105,20 @@ public static class MatcherMain {
 			mappingsOld = JsonSerializer.Deserialize<Mappings>(mappingsStream, options)!;
 		}
 
-		var matcher = new Matcher(mappingsOld);
+		// pairs of intermediary names for A and obf names for B, separated by commas
+		var hintsFile = Path.Join(RunDirectory, "hints.txt");
+		Dictionary<string, string>? matchHints = null;
+		if (File.Exists(hintsFile)) {
+			matchHints = [];
+			foreach (var line in File.ReadAllLines(hintsFile)) {
+				var trimmed = line.Trim();
+				if (trimmed == "" || trimmed.StartsWith("#")) continue;
+				var split = trimmed.Split(",");
+				matchHints[split[0]] = split[1];
+			}
+		}
+
+		var matcher = new Matcher(mappingsOld, matchHints);
 		matcher.Init(moduleA, moduleB, [stringsPathA], [stringsPathB]);
 		matcher.AutoMatchAll(Console.WriteLine);
 

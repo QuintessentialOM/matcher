@@ -18,12 +18,14 @@ public class Matcher {
 	readonly LocalClassEnv envA;
 	readonly LocalClassEnv envB;
 	readonly Mappings? mappingsA;
+	readonly Dictionary<string, string>? matchHints;
 
-	public Matcher(Mappings? mappingsA) {
+	public Matcher(Mappings? mappingsA, Dictionary<string, string>? matchHints) {
 		env = new();
 		envA = env.EnvA;
 		envB = env.EnvB;
 		this.mappingsA = mappingsA;
+		this.matchHints = matchHints;
 	}
 
 	public static bool IsTypeFullNameDeobfuscated(TypeReference type) {
@@ -929,6 +931,22 @@ public class Matcher {
 		// }, progressReceiver);
 
 		foreach (var cls in classes) {
+			if (mappingsA != null && matchHints != null) {
+				var intermediaryA = GetIntermediaryForTypeA(cls);
+				if (intermediaryA != null && matchHints.ContainsKey(intermediaryA)) {
+					var obfB = matchHints[intermediaryA];
+					var foundMatch = false;
+					foreach (var clsB in cmpClasses) {
+						if (clsB.CecilTypeReference.Name == obfB) {
+							foundMatch = true;
+							matches[cls] = clsB;
+							break;
+						}
+					}
+					if (foundMatch) continue;
+				}
+			}
+
 			List<RankResult<TypeInstance>> ranking = TypeClassifier.Rank(cls, [.. cmpClasses], level, env, maxMismatch, subgroup);
 
 			if (ClassifierUtil.CheckRank(ranking, absThreshold, relThreshold, maxScore)) {
@@ -1084,6 +1102,30 @@ public class Matcher {
 			foreach (T member in memberGetter.Invoke(cls)) {
 				if (member.HasMatch() || !member.IsMatchable()) continue;
 
+				if (mappingsA != null && matchHints != null) {
+					string? intermediaryA;
+					if (member is FieldInstance field) {
+						intermediaryA = GetIntermediaryForFieldA(field);
+					} else if (member is MethodInstance method) {
+						intermediaryA = GetIntermediaryForMethodA(method);
+					} else { // TODO use match hints for type generic params
+						intermediaryA = null;
+					}
+					if (intermediaryA != null && matchHints.ContainsKey(intermediaryA)) {
+						var obfB = matchHints[intermediaryA];
+						var foundMatch = false;
+						var possibleMatches = memberGetter.Invoke(cls.GetMatch());
+						foreach (var memberB in possibleMatches) {
+							if (((MatchableMember) (object) memberB).GetName() == obfB) {
+								foundMatch = true;
+								ret[member] = memberB;
+								break;
+							}
+						}
+						if (foundMatch) continue;
+					}
+				}
+
 				List<RankResult<T>> ranking = ranker.Invoke(member, memberGetter.Invoke(cls.GetMatch()), level, env, maxMismatch);
 
 				if (ClassifierUtil.CheckRank(ranking, absThreshold, relThreshold, maxScore)) {
@@ -1157,6 +1199,8 @@ public class Matcher {
 
 				foreach (TypeInstance var in m.genericParamsOrdered) {
 					if (var.HasMatch() || !var.IsMatchable()) continue;
+
+					// TODO use match hints for method generic params
 
 					List<RankResult<TypeInstance>> ranking = TypeClassifier.Rank(var, m.GetMatch().genericParamsOrdered.ToArray(), level, env, maxMismatch, TypeSubgroup.MethodGenericParameter);
 
@@ -1233,6 +1277,23 @@ public class Matcher {
 
 				foreach (MethodParamInstance var in supplier.Invoke(m)) {
 					if (var.HasMatch() || !var.IsMatchable()) continue;
+
+					if (mappingsA != null && matchHints != null) {
+						var intermediaryA = GetIntermediaryForMethodParamA(var, m);
+						if (intermediaryA != null && matchHints.ContainsKey(intermediaryA)) {
+							var obfB = matchHints[intermediaryA];
+							var foundMatch = false;
+							var possibleMatches = supplier.Invoke(m.GetMatch());
+							foreach (var clsB in possibleMatches) {
+								if (clsB.CecilParameter.Name == obfB) {
+									foundMatch = true;
+									matches[var] = clsB;
+									break;
+								}
+							}
+							if (foundMatch) continue;
+						}
+					}
 
 					List<RankResult<MethodParamInstance>> ranking = MethodParamClassifier.Rank(var, supplier.Invoke(m.GetMatch()), level, env, maxMismatch);
 
@@ -1433,34 +1494,63 @@ public class Matcher {
 		return typeA.GetField(obfName, null)!;
 	}
 
-	public string GetIntermediaryForTypeA(TypeInstance typeInstance) {
-		return GetIntermediaryForTypeA(typeInstance.CecilTypeReference);
+	public string? GetIntermediaryForFieldA(FieldInstance field) => GetIntermediaryForFieldA(field.CecilField);
+	// public string? GetIntermediaryForGenericA(TypeInstance type) => GetIntermediaryForGenericA(type.CecilTypeReference); // TODO
+	public string? GetIntermediaryForMethodA(MethodInstance method) => GetIntermediaryForMethodA(method.CecilMethod);
+	public string? GetIntermediaryForMethodParamA(MethodParamInstance param, MethodInstance method) => GetIntermediaryForMethodParamA(param.CecilParameter, method.CecilMethod);
+	public string? GetIntermediaryForTypeA(TypeInstance type) => GetIntermediaryForTypeA(type.CecilTypeReference);
+
+	public string? GetIntermediaryForFieldA(FieldReference field)
+		=> FindType(field.DeclaringType)?.Fields.Where(f => f.FieldNameA == field.Name).SingleOrDefault((FieldMapping?) null)?.FieldNameB ?? field.Name;
+
+	public string? GetIntermediaryForGenericA(GenericParameter generic)
+		=> generic.Type == GenericParameterType.Method
+			? FindMethod(generic.DeclaringMethod)?.GenericParameters.Where(g => g.GenericNameA == generic.Name)
+				.SingleOrDefault((GenericParameterMapping?) null)?.GenericNameB ?? generic.Name
+			: FindType(generic.DeclaringType)?.GenericParameters.Where(g => g.GenericNameA == generic.Name)
+				.SingleOrDefault((GenericParameterMapping?) null)?.GenericNameB ?? generic.Name;
+
+	public string? GetIntermediaryForMethodA(MethodReference method)
+		=> FindMethod(method)?.MethodNameB ?? method.Name;
+
+	public string? GetIntermediaryForMethodParamA(ParameterReference param, MethodReference method)
+		=> FindMethod(method)?.Parameters.Where(p => p.ParameterNameA == param.Name).SingleOrDefault((MethodParameterMapping?) null)?.ParameterNameB ?? param.Name;
+
+	public string? GetIntermediaryForTypeA(TypeReference type)
+		=> FindType(type)?.ClassNameB ?? type.Name;
+
+	private TypeReference GetMainType(TypeReference type) {
+		if (type.IsGenericParameter)
+			throw new Exception($"Attempted to get main type of generic parameter `{type.FullName}`!");
+
+		if (type.IsGenericInstance || type.IsArray || type.IsByReference || type.IsPointer)
+			return GetMainType(type.GetElementType());
+
+		return type;
 	}
 
-	public string GetIntermediaryForTypeA(TypeReference typeReference) {
-		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == typeReference.FullName).SingleOrDefault((ClassMapping?) null);
-		return cls?.ClassNameB ?? "???";
+	private ClassMapping? FindType(TypeReference type) {
+		type = GetMainType(type); // Ignore generics, array types, reference types, etc
+		return mappingsA.Classes.Where(cls => cls.ClassFullNameA == type.FullName).SingleOrDefault((ClassMapping?) null);
 	}
 
-	public string GetIntermediaryForFieldA(FieldInstance fieldInstance) {
-		return GetIntermediaryForFieldA(fieldInstance.CecilField);
-	}
-
-	public string GetIntermediaryForFieldA(FieldReference fieldReference) {
-		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == fieldReference.DeclaringType.FullName).SingleOrDefault((ClassMapping?) null);
-		if (cls == null) return "???";
-		var fieldName = cls.Fields.Where(field => field.FieldNameA == fieldReference.Name).SingleOrDefault((FieldMapping?) null);
-		return fieldName?.FieldNameB ?? "???";
-	}
-
-	public string GetIntermediaryForMethodA(MethodInstance methodInstance) {
-		return GetIntermediaryForMethodA(methodInstance.CecilMethod);
-	}
-
-	public string GetIntermediaryForMethodA(MethodReference methodReference) {
-		var cls = mappingsA.Classes.Where(cls => cls.ClassFullNameA == methodReference.DeclaringType.FullName).SingleOrDefault((ClassMapping?) null);
-		if (cls == null) return "???";
-		var methodName = cls.Methods.Where(method => method.MethodNameA == methodReference.Name).SingleOrDefault((MethodMapping?) null);
-		return methodName?.MethodNameB ?? "???";
-	}
+	private MethodMapping? FindMethod(MethodReference method)
+		// TODO: generic params stripped when matching method signatures due to Cecil handling generic instance method references strangely
+		// probably not ideal, but maybe it's fine?
+					=> FindType(method.DeclaringType)?.Methods.Where(m => {
+			if (m.MethodNameA != method.Name || m.ArgumentTypeFullNamesA.Count != method.Parameters.Count || m.GenericParameters.Count != method.GenericParameters.Count)
+				return false;
+			var paramTypes = method.Parameters.Select(p => p.ParameterType.FullName).ToList();
+			var returnType = method.ReturnType.FullName;
+			// Substitute generic names so that they compare properly - method references sometimes have !!n for the n-th generic, instead of using the method definition's generic parameter name.
+			foreach (var (from, to) in method.GenericParameters.Select(p => p.FullName).Zip(m.GenericParameters.Select(p => p.GenericNameA))) {
+				for (int i = 0; i < paramTypes.Count; i++) {
+					paramTypes[i] = paramTypes[i].Replace(from, to);
+				}
+				returnType = returnType.Replace(from, to);
+			}
+			return m.ReturnTypeFullNameA == returnType
+				&& m.ArgumentTypeFullNamesA.Zip(paramTypes, (a, b) => (a, b))
+					.All(pair => pair.a == pair.b);
+		}).SingleOrDefault((MethodMapping?) null);
 }
