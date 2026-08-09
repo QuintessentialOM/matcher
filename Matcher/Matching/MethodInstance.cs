@@ -4,8 +4,8 @@ using Mono.Cecil;
 namespace Matcher.Matching;
 
 public class MethodInstance : MatchableMember {
-	public MethodDefinition? CecilMethod { get {
-		return (MethodDefinition?) CecilMemberReference;
+	public MethodDefinition CecilMethod { get {
+		return (MethodDefinition) CecilMemberReference;
 	} }
 	private MethodInstance? matchedMethod;
 	public MethodHierarchyData? hierarchyData;

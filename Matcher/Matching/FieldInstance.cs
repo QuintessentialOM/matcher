@@ -7,8 +7,8 @@ using Mono.Cecil.Cil;
 namespace Matcher.Matching;
 
 public class FieldInstance : MatchableMember {
-	public FieldDefinition? CecilField { get {
-		return (FieldDefinition?) CecilMemberReference;
+	public FieldDefinition CecilField { get {
+		return (FieldDefinition) CecilMemberReference;
 	} }
 	private readonly string id;
 	private FieldInstance? matchedField;

@@ -120,7 +120,7 @@ public static class MatcherMain {
 
 		var matcher = new Matcher(mappingsOld, matchHints);
 		matcher.Init(moduleA, moduleB, [stringsPathA], [stringsPathB]);
-		matcher.AutoMatchAll(Console.WriteLine);
+		matcher.AutoMatchAll();
 
 		var mappingsNew = new Mappings() {
 			NamespaceA = "obf",

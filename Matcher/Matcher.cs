@@ -61,7 +61,7 @@ public class Matcher {
 		Console.WriteLine("Inlining strings for module B");
 		InlineStrings(moduleB, stringDeobfNameB, LoadStrings(stringsPathsB));
 
-		// TODO env init stuff - see ClassFeatureExtractor.process
+		// env init stuff - see ClassFeatureExtractor.process
 		// what fabric matcher does:
 		// step A: methods/fields, outer classes, super classes and interfaces, and collect strings that appear in classes
 		// step B: method bodies: field accesses, method invocations, class instantiation etc
@@ -264,70 +264,6 @@ public class Matcher {
 				owner.methodTypeRefs.Add(method);
 				method.typeRefs.Add(owner);
 			}
-
-
-			// switch (ain.getType()) {
-			// case AbstractInsnNode.METHOD_INSN: {
-			// 	MethodInsnNode in = (MethodInsnNode) ain;
-			// 	handleMethodInvocation(method,
-			// 			in.owner, in.name, in.desc,
-			// 			Util.isCallToInterface(in), ain.getOpcode() == Opcodes.INVOKESTATIC);
-			// 	break;
-			// }
-			// case AbstractInsnNode.FIELD_INSN: {
-			// 	FieldInsnNode in = (FieldInsnNode) ain;
-			// 	ClassInstance owner = getCreateClassInstance(ClassInstance.getId(in.owner));
-			// 	FieldInstance dst = owner.resolveField(in.name, in.desc);
-
-			// 	if (dst == null) { // unknown field, create a synthetic one
-			// 		dst = new FieldInstance(owner, in.name, in.desc, ain.getOpcode() == Opcodes.GETSTATIC || ain.getOpcode() == Opcodes.PUTSTATIC);
-			// 		owner.addField(dst);
-			// 	}
-
-			// 	if (ain.getOpcode() == Opcodes.GETSTATIC || ain.getOpcode() == Opcodes.GETFIELD) {
-			// 		dst.readRefs.add(method);
-			// 		method.fieldReadRefs.add(dst);
-			// 	} else {
-			// 		dst.writeRefs.add(method);
-			// 		method.fieldWriteRefs.add(dst);
-			// 	}
-
-			// 	dst.cls.methodTypeRefs.add(method);
-			// 	method.classRefs.add(dst.cls);
-
-			// 	break;
-			// }
-			// case AbstractInsnNode.TYPE_INSN: {
-			// 	TypeInsnNode tin = (TypeInsnNode) ain;
-			// 	ClassInstance dst = getCreateClassInstance(ClassInstance.getId(tin.desc));
-
-			// 	dst.methodTypeRefs.add(method);
-			// 	method.classRefs.add(dst);
-
-			// 	break;
-			// }
-			// case AbstractInsnNode.INVOKE_DYNAMIC_INSN: {
-			// 	InvokeDynamicInsnNode in = (InvokeDynamicInsnNode) ain;
-			// 	Handle impl = Util.getTargetHandle(in.bsm, in.bsmArgs);
-			// 	if (impl == null) break;
-
-			// 	switch (impl.getTag()) {
-			// 	case Opcodes.H_INVOKEVIRTUAL:
-			// 	case Opcodes.H_INVOKESTATIC:
-			// 	case Opcodes.H_INVOKESPECIAL:
-			// 	case Opcodes.H_NEWINVOKESPECIAL:
-			// 	case Opcodes.H_INVOKEINTERFACE:
-			// 		handleMethodInvocation(method,
-			// 				impl.getOwner(), impl.getName(), impl.getDesc(),
-			// 				Util.isCallToInterface(impl), impl.getTag() == Opcodes.H_INVOKESTATIC);
-			// 		break;
-			// 	default:
-			// 		logger.warn("Unexpected impl tag: {}", impl.getTag());
-			// 	}
-
-			// 	break;
-			// }
-			// }
 		}
 	}
 
@@ -451,8 +387,7 @@ public class Matcher {
 	}
 
 	private static void DetermineMethodRelations(MethodInstance method, Queue<TypeInstance> toCheck, HashSet<TypeInstance> checked_) {
-		// if (method.origName.equals("<init>") || method.origName.equals("<clinit>")) return;
-		if (method.GetName() == ".ctor") return;
+		if (method.GetName() == ".ctor" || method.GetName() == ".cctor") return;
 		if (IsHierarchyBarrier(method)) return;
 
 		if (method.ContainingType.baseType != null) toCheck.Enqueue(method.ContainingType.baseType);
@@ -476,22 +411,6 @@ public class Matcher {
 
 		checked_.Clear();
 	}
-
-	// private void determineMethodType(MethodInstance method) {
-	// 	MethodType type;
-
-	// 	if (method.getId().startsWith("<clinit>")) {
-	// 		type = MethodType.CLASS_INIT;
-	// 	} else if (method.getId().startsWith("<init>")) {
-	// 		type = MethodType.CONSTRUCTOR;
-	// 	} else if (isLambdaMethod(method)) {
-	// 		type = MethodType.LAMBDA_IMPL;
-	// 	} else {
-	// 		type = MethodType.OTHER;
-	// 	}
-
-	// 	method.type = type;
-	// }
 
 	private void MatchUnobfuscated() {
 		foreach (var typeName in envA.types.Keys) {
@@ -825,110 +744,73 @@ public class Matcher {
 	private const double minRelMatchThreshold = 0.04;
 
 
-	public void AutoMatchAll(Action<double> progressReceiver) {
-		Console.WriteLine($"initial {GetStatus(true)}");
-		if (AutoMatchClasses(ClassifierLevel.Initial, progressReceiver)) {
-			Console.WriteLine($"classes {GetStatus(true)}");
-			AutoMatchClasses(ClassifierLevel.Initial, progressReceiver);
+	public void AutoMatchAll() {
+		Console.WriteLine($"initial {GetStatus()}");
+		if (AutoMatchClasses(ClassifierLevel.Initial)) {
+			Console.WriteLine($"classes {GetStatus()}");
+			AutoMatchClasses(ClassifierLevel.Initial);
 		}
-		Console.WriteLine($"classes {GetStatus(true)}");
+		Console.WriteLine($"classes {GetStatus()}");
 
-		AutoMatchLevel(ClassifierLevel.Intermediate, progressReceiver);
-		Console.WriteLine($"intermediate {GetStatus(true)}");
-		AutoMatchLevel(ClassifierLevel.Full, progressReceiver);
-		Console.WriteLine($"full {GetStatus(true)}");
+		AutoMatchLevel(ClassifierLevel.Intermediate);
+		Console.WriteLine($"intermediate {GetStatus()}");
+		AutoMatchLevel(ClassifierLevel.Full);
+		Console.WriteLine($"full {GetStatus()}");
 
 		if (mappingsA != null) {
 			var specialCases = new SpecialCases(this, mappingsA);
 			specialCases.DoSpecialCaseMatches();
 		}
 
-		Console.WriteLine($"special-cases {GetStatus(true)}");
+		Console.WriteLine($"special-cases {GetStatus()}");
 
-		AutoMatchLevel(ClassifierLevel.Extra, progressReceiver);
-		Console.WriteLine($"extra {GetStatus(true)}");
+		AutoMatchLevel(ClassifierLevel.Extra);
+		Console.WriteLine($"extra {GetStatus()}");
 
-		var level = ClassifierLevel.Extra;
-		var absThreshold = absClassAutoMatchThreshold;
-		var relThreshold = relClassAutoMatchThreshold;
 		bool matchedAny;
 
-		// while (true) {
-		// 	matchedAny = AutoMatchMethods(level, absThreshold, relThreshold, progressReceiver);
-		// 	matchedAny |= AutoMatchFields(level, absThreshold, relThreshold, progressReceiver);
-		// 	matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Normal);
-		// 	matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.GenericInstance);
-		// 	matchedAny |= AutoMatchTypeGenericParams(level, absThreshold, relThreshold, progressReceiver);
-		// 	matchedAny |= AutoMatchMethodGenericParams(level, absThreshold, relThreshold, progressReceiver);
-		// 	matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Enum);
-		// 	matchedAny |= AutoMatchClasses(level, absThreshold, relThreshold, progressReceiver, TypeSubgroup.Delegate);
-		// 	if (matchedAny) {
-		// 		Console.WriteLine($"bruteforce {GetStatus(true)}");
-		// 		absThreshold = absClassAutoMatchThreshold;
-		// 		relThreshold = relClassAutoMatchThreshold;
-		// 	} else {
-		// 		if (absThreshold == minAbsMatchThreshold && relThreshold == minRelMatchThreshold) {
-		// 			break;
-		// 		} else {
-		// 			absThreshold = Math.Max(minAbsMatchThreshold, absThreshold * 0.9);
-		// 			relThreshold = Math.Max(minRelMatchThreshold, relThreshold * 0.9);
-		// 		}
-		// 	}
-		// }
-
 		do {
-			matchedAny = AutoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
-			Console.WriteLine($"args {GetStatus(true)}");
+			matchedAny = AutoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold);
+			Console.WriteLine($"args {GetStatus()}");
 			// matchedAny |= autoMatchMethodVars(ClassifierLevel.Full, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
 		} while (matchedAny);
 	}
 
-	private void AutoMatchLevel(ClassifierLevel level, Action<double> progressReceiver) {
+	private void AutoMatchLevel(ClassifierLevel level) {
 		bool matchedAny;
 		bool matchedClassesBefore = true;
 
 		do {
-			matchedAny = AutoMatchMethods(level, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
-			matchedAny |= AutoMatchFields(level, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
+			matchedAny = AutoMatchMethods(level, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold);
+			matchedAny |= AutoMatchFields(level, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold);
 
 			if (!matchedAny && !matchedClassesBefore) {
 				break;
 			}
 
-			matchedAny |= matchedClassesBefore = AutoMatchClasses(level, progressReceiver);
+			matchedAny |= matchedClassesBefore = AutoMatchClasses(level);
 		} while (matchedAny);
 	}
 
-	public bool AutoMatchClasses(ClassifierLevel level, Action<double> progressReceiver) {
-		return AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver, TypeSubgroup.Normal)
-			|| AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver, TypeSubgroup.GenericInstance)
-			|| AutoMatchTypeGenericParams(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)
-			|| AutoMatchMethodGenericParams(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)
-			|| AutoMatchClasses(level, absEnumAutoMatchThreshold, relEnumAutoMatchThreshold, progressReceiver, TypeSubgroup.Enum)
-			|| AutoMatchClasses(level, absDelegateAutoMatchThreshold, relDelegateAutoMatchThreshold, progressReceiver, TypeSubgroup.Delegate);
+	public bool AutoMatchClasses(ClassifierLevel level) {
+		return AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, TypeSubgroup.Normal)
+			|| AutoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, TypeSubgroup.GenericInstance)
+			|| AutoMatchTypeGenericParams(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold)
+			|| AutoMatchMethodGenericParams(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold)
+			|| AutoMatchClasses(level, absEnumAutoMatchThreshold, relEnumAutoMatchThreshold, TypeSubgroup.Enum)
+			|| AutoMatchClasses(level, absDelegateAutoMatchThreshold, relDelegateAutoMatchThreshold, TypeSubgroup.Delegate);
 	}
 
-	public bool AutoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver, TypeSubgroup subgroup) {
+	public bool AutoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, TypeSubgroup subgroup) {
 		bool filter(TypeInstance cls) => cls.IsReal() && (!assumeBothOrNoneObfuscated || cls.IsNameObfuscated) && !cls.HasMatch() && cls.IsMatchable() && cls.GetSubgroup() == subgroup;
 
-		List<TypeInstance> classes = [.. new List<TypeInstance>(envA.types.Values).Where(filter)];
+		List<TypeInstance> classes = [.. envA.types.Values.Where(filter)];
 
-		// TypeInstance[] cmpClasses = new List<TypeInstance>(envB.types.Values).Where(filter).ToList();
-		List<TypeInstance> cmpClasses = [.. new List<TypeInstance>(envB.types.Values).Where(filter)];
+		List<TypeInstance> cmpClasses = [.. envB.types.Values.Where(filter)];
 
 		double maxScore = TypeClassifier.GetMaxScore(level, subgroup);
 		double maxMismatch = maxScore - ClassifierUtil.GetRawScore(absThreshold * (1 - relThreshold), maxScore);
-		Dictionary<TypeInstance, TypeInstance> matches = [];//new ConcurrentHashDictionary<>(classes.Count);
-
-		// runInParallel(classes, cls => {
-		// 	List<RankResult<TypeInstance>> ranking = TypeClassifier.rank(cls, cmpClasses, level, env, maxMismatch);
-
-		// 	if (ClassifierUtil.checkRank(ranking, absThreshold, relThreshold, maxScore)) {
-		// 		TypeInstance match = ranking.get(0).getSubject();
-
-		// 		matches.put(cls, match);
-		// 	}
-		// }, progressReceiver);
+		Dictionary<TypeInstance, TypeInstance> matches = [];
 
 		foreach (var cls in classes) {
 			if (mappingsA != null && matchHints != null) {
@@ -974,42 +856,15 @@ public class Matcher {
 		return matches.Count != 0;
 	}
 
-	// public static void runInParallel<T, C>(List<T> workSet, Consumer<T> worker, Action<double> progressReceiver) {
-	// 	if (workSet.Count == 0) return;
-
-	// 	int itemsDone = 0; // originally AtomicInteger
-	// 	int updateRate = Math.max(1, workSet.Count / 200);
-
-	// 	try {
-	// 		List<Future<Void>> futures = threadPool.invokeAll(workSet.stream().<Callable<Void>>map(workItem => () => {
-	// 			worker.accept(workItem);
-
-	// 			int cItemsDone = itemsDone.incrementAndGet();
-
-	// 			if ((cItemsDone % updateRate) == 0) {
-	// 				progressReceiver.accept((double) cItemsDone / workSet.Count);
-	// 			}
-
-	// 			return null;
-	// 		}).collect(Collectors.toList()));
-
-	// 		for (Future<Void> future : futures) {
-	// 			future.get();
-	// 		}
-	// 	} catch (ExecutionException | InterruptedException e) {
-	// 		throw new RuntimeException(e);
-	// 	}
-	// }
-
-	public bool AutoMatchMethods(Action<double> progressReceiver) {
-		return AutoMatchMethods(autoMatchMaxLevel, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
+	public bool AutoMatchMethods() {
+		return AutoMatchMethods(autoMatchMaxLevel, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold);
 	}
 
-	public bool AutoMatchMethods(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
-		int totalUnmatched = 0; // originally AtomicInteger
+	public bool AutoMatchMethods(ClassifierLevel level, double absThreshold, double relThreshold) {
+		int totalUnmatched = 0;
 		Dictionary<MethodInstance, MethodInstance> matches = MatchMembers(level, absThreshold, relThreshold,
 				cls => cls.methodsById.Values.ToArray(), MethodClassifier.Rank, MethodClassifier.GetMaxScore(level),
-				progressReceiver, ref totalUnmatched);
+				ref totalUnmatched);
 
 		foreach (var entry in matches) {
 			MatchMethod(entry.Key, entry.Value);
@@ -1020,17 +875,17 @@ public class Matcher {
 		return matches.Count != 0;
 	}
 
-	public bool AutoMatchFields(Action<double> progressReceiver) {
-		return AutoMatchFields(autoMatchMaxLevel, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
+	public bool AutoMatchFields() {
+		return AutoMatchFields(autoMatchMaxLevel, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold);
 	}
 
-	public bool AutoMatchFields(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
-		int totalUnmatched = 0; // originally AtomicInteger
+	public bool AutoMatchFields(ClassifierLevel level, double absThreshold, double relThreshold) {
+		int totalUnmatched = 0;
 		double maxScore = FieldClassifier.GetMaxScore(level);
 
 		Dictionary<FieldInstance, FieldInstance> matches = MatchMembers(level, absThreshold, relThreshold,
 				cls => cls.fieldsById.Values.ToArray(), FieldClassifier.Rank, maxScore,
-				progressReceiver, ref totalUnmatched);
+				ref totalUnmatched);
 
 		foreach (var entry in matches) {
 			MatchField(entry.Key, entry.Value);
@@ -1041,13 +896,13 @@ public class Matcher {
 		return matches.Count != 0;
 	}
 
-	public bool AutoMatchTypeGenericParams(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
-		int totalUnmatched = 0; // originally AtomicInteger
+	public bool AutoMatchTypeGenericParams(ClassifierLevel level, double absThreshold, double relThreshold) {
+		int totalUnmatched = 0;
 		double maxScore = TypeClassifier.GetMaxScore(level, TypeSubgroup.TypeGenericParameter);
 
 		Dictionary<TypeInstance, TypeInstance> matches = MatchMembers(level, absThreshold, relThreshold,
 				cls => cls.genericParamsOrdered.ToArray(), (a, b, c, d, e) => TypeClassifier.Rank(a, b, c, d, e, TypeSubgroup.TypeGenericParameter), maxScore,
-				progressReceiver, ref totalUnmatched);
+				ref totalUnmatched);
 
 		foreach (var entry in matches) {
 			MatchType(entry.Key, entry.Value);
@@ -1060,7 +915,7 @@ public class Matcher {
 
 	private Dictionary<T, T> MatchMembers<T>(ClassifierLevel level, double absThreshold, double relThreshold,
 			Func<TypeInstance, T[]> memberGetter, IRanker<T> ranker, double maxScore,
-			Action<double> progressReceiver, ref int totalUnmatched) where T : Matchable {
+			ref int totalUnmatched) where T : Matchable {
 		List<TypeInstance> classes = env.EnvA.types.Values
 				.Where(cls => /*cls.isReal() &&*/ cls.HasMatch() && memberGetter.Invoke(cls).Length > 0)
 				.Where(cls => {
@@ -1074,27 +929,7 @@ public class Matcher {
 		if (classes.Count == 0) return [];
 
 		double maxMismatch = maxScore - ClassifierUtil.GetRawScore(absThreshold * (1 - relThreshold), maxScore);
-		Dictionary<T, T> ret = [];//new ConcurrentHashDictionary<>(512);
-
-		// runInParallel(classes, cls => {
-		// 	int unmatched = 0;
-
-		// 	foreach (T member in memberGetter.apply(cls)) {
-		// 		if (member.hasMatch() || !member.isMatchable()) continue;
-
-		// 		List<RankResult<T>> ranking = ranker.rank(member, memberGetter.apply(cls.getMatch()), level, env, maxMismatch);
-
-		// 		if (ClassifierUtil.checkRank(ranking, absThreshold, relThreshold, maxScore)) {
-		// 			T match = ranking.get(0).getSubject();
-
-		// 			ret.put(member, match);
-		// 		} else {
-		// 			unmatched++;
-		// 		}
-		// 	}
-
-		// 	if (unmatched > 0) totalUnmatched.addAndGet(unmatched);
-		// }, progressReceiver);
+		Dictionary<T, T> ret = [];
 
 		foreach (var cls in classes) {
 			int unmatched = 0;
@@ -1145,8 +980,6 @@ public class Matcher {
 				}
 			}
 
-			// if we parallelize again
-			// if (unmatched > 0) Interlocked.Add(ref totalUnmatched, unmatched);
 			if (unmatched > 0) totalUnmatched += unmatched;
 		}
 
@@ -1155,23 +988,23 @@ public class Matcher {
 		return ret;
 	}
 
-	public bool AutoMatchMethodArgs(Action<double> progressReceiver) {
-		return AutoMatchMethodArgs(autoMatchMaxLevel, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
+	public bool AutoMatchMethodArgs() {
+		return AutoMatchMethodArgs(autoMatchMaxLevel, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold);
 	}
 
-	public bool AutoMatchMethodArgs(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
-		return AutoMatchMethodVars(true, methodInstance => methodInstance.args, level, absThreshold, relThreshold, progressReceiver);
+	public bool AutoMatchMethodArgs(ClassifierLevel level, double absThreshold, double relThreshold) {
+		return AutoMatchMethodVars(true, methodInstance => methodInstance.args, level, absThreshold, relThreshold);
 	}
 
-	// public bool autoMatchMethodVars(Action<double> progressReceiver) {
-	// 	return autoMatchMethodVars(autoMatchMaxLevel, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
+	// public bool autoMatchMethodVars() {
+	// 	return autoMatchMethodVars(autoMatchMaxLevel, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold);
 	// }
 
-	// public bool autoMatchMethodVars(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
-	// 	return autoMatchMethodVars(false, MethodInstance.getVars, level, absThreshold, relThreshold, progressReceiver);
+	// public bool autoMatchMethodVars(ClassifierLevel level, double absThreshold, double relThreshold) {
+	// 	return autoMatchMethodVars(false, MethodInstance.getVars, level, absThreshold, relThreshold);
 	// }
 
-	public bool AutoMatchMethodGenericParams(ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
+	public bool AutoMatchMethodGenericParams(ClassifierLevel level, double absThreshold, double relThreshold) {
 		List<MethodInstance> methods = env.EnvA.types.Values
 				.Where(cls => /*cls.isReal() &&*/ cls.HasMatch() && cls.methodsById.Count > 0)
 				.SelectMany(cls => cls.methodsById.Values)
@@ -1185,7 +1018,7 @@ public class Matcher {
 				})
 				.ToList();
 		Dictionary<TypeInstance, TypeInstance> matches;
-		int totalUnmatched = 0; // originally AtomicInteger
+		int totalUnmatched = 0;
 
 		if (methods.Count == 0) {
 			matches = [];
@@ -1213,8 +1046,6 @@ public class Matcher {
 					}
 				}
 
-				// if we parallelize again
-				// if (unmatched > 0) Interlocked.Add(ref totalUnmatched, unmatched);
 				if (unmatched > 0) totalUnmatched += unmatched;
 			}
 
@@ -1229,7 +1060,7 @@ public class Matcher {
 	}
 
 	private bool AutoMatchMethodVars(bool isArg, Func<MethodInstance, MethodParamInstance[]> supplier,
-			ClassifierLevel level, double absThreshold, double relThreshold, Action<double> progressReceiver) {
+			ClassifierLevel level, double absThreshold, double relThreshold) {
 		List<MethodInstance> methods = env.EnvA.types.Values
 				.Where(cls => /*cls.isReal() &&*/ cls.HasMatch() && cls.methodsById.Count > 0)
 				.SelectMany(cls => cls.methodsById.Values)
@@ -1243,34 +1074,14 @@ public class Matcher {
 				})
 				.ToList();
 		Dictionary<MethodParamInstance, MethodParamInstance> matches;
-		int totalUnmatched = 0; // originally AtomicInteger
+		int totalUnmatched = 0;
 
 		if (methods.Count == 0) {
 			matches = [];
 		} else {
 			double maxScore = MethodParamClassifier.GetMaxScore(level);
 			double maxMismatch = maxScore - ClassifierUtil.GetRawScore(absThreshold * (1 - relThreshold), maxScore);
-			matches = [];//new ConcurrentHashDictionary<>(512);
-
-			// runInParallel(methods, m => {
-			// 	int unmatched = 0;
-
-			// 	foreach (MethodVarInstance var in supplier.apply(m)) {
-			// 		if (var.hasMatch() || !var.isMatchable()) continue;
-
-			// 		List<RankResult<MethodVarInstance>> ranking = MethodVarClassifier.rank(var, supplier.apply(m.getMatch()), level, env, maxMismatch);
-
-			// 		if (ClassifierUtil.checkRank(ranking, absThreshold, relThreshold, maxScore)) {
-			// 			MethodVarInstance match = ranking.get(0).getSubject();
-
-			// 			matches.put(var, match);
-			// 		} else {
-			// 			unmatched++;
-			// 		}
-			// 	}
-
-			// 	if (unmatched > 0) totalUnmatched.addAndGet(unmatched);
-			// }, progressReceiver);
+			matches = [];
 
 			foreach (var m in methods) {
 				int unmatched = 0;
@@ -1306,8 +1117,6 @@ public class Matcher {
 					}
 				}
 
-				// if we parallelize again
-				// if (unmatched > 0) Interlocked.Add(ref totalUnmatched, unmatched);
 				if (unmatched > 0) totalUnmatched += unmatched;
 			}
 
@@ -1343,7 +1152,7 @@ public class Matcher {
 	public record MatchingStatus(int TotalClassCount, int MatchedClassCount, int TotalMethodCount, int MatchedMethodCount,
 			int TotalMethodArgCount, int MatchedMethodArgCount, int TotalFieldCount, int MatchedFieldCount, int TotalGenericParamsCount, int MatchedGenericParamsCount) {}
 
-	public MatchingStatus GetStatus(bool inputsOnly) {
+	public MatchingStatus GetStatus() {
 		int totalClassCount = 0;
 		int matchedClassCount = 0;
 		int totalMethodCount = 0;
@@ -1358,7 +1167,7 @@ public class Matcher {
 		int matchedGenericParamsCount = 0;
 
 		foreach (TypeInstance cls in env.EnvA.types.Values) {
-			if (inputsOnly && cls.CecilType == null) continue;
+			if (cls.CecilType == null) continue;
 			if (cls.GetSubgroup() == TypeSubgroup.GenericInstance) continue; // generic instance matching doesn't actually matter
 			if (cls.IsIgnored()) continue;
 
