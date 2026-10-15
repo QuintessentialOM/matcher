@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Mono.Cecil;
 
 namespace Matcher;
 
@@ -24,4 +25,9 @@ public static class Utils {
 
 	public static IEnumerable<(int index, T item)> WithIndex<T>(this IEnumerable<T> self)       
        => self.Select((item, index) => (index, item));
+	
+	// can't rely on `FullName` being unique so we do this mess instead
+	public static string GenericParameterPlaceholderName(GenericParameter generic) {
+		return generic.Type == GenericParameterType.Type ? generic.DeclaringType.FullName + "____" + generic.FullName : generic.DeclaringMethod.FullName + "____" + generic.FullName;
+	}
 }

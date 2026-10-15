@@ -59,8 +59,8 @@ public static class MatcherMain {
 
 		var matchOntoSelf = false; // whether matching onto self (for testing match stability)
 
-		var versionAliasA = "ce_20260709_russianJournal";
-		var versionAliasB = matchOntoSelf ? versionAliasA : "ce_20260729";
+		var versionAliasA = "ce_20260729";
+		var versionAliasB = matchOntoSelf ? versionAliasA : "ce_20261015";
 
 		TypeClassifier.Init();
 		MethodClassifier.Init();
@@ -154,6 +154,7 @@ public static class MatcherMain {
 			ClassMapping? classMapping = mappingsOld.Classes.Where(cls => cls.ClassFullNameA == type.CecilTypeReference.FullName).SingleOrDefault((ClassMapping?) null);
 			if (classMapping == null) continue;
 			foreach (var method in type.methodsOrdered) {
+				if (method.IsIgnored()) continue;
 				MethodMapping? methodMapping = classMapping.Methods.Where(methodM => {
 						return methodM.MethodNameA == method.CecilMethod.Name
 							&& methodM.ReturnTypeFullNameA == method.CecilMethod.ReturnType.FullName
@@ -193,6 +194,7 @@ public static class MatcherMain {
 			}
 			if (type.SuggestedMappedName != null) generatedNamedMappingsForType.AppendLine($"{classMappingNew.ClassNameB},{type.SuggestedMappedName}");
 			foreach (var field in type.fieldsOrdered) {
+				if (field.IsIgnored()) continue;
 				FieldMapping? fieldMappingOld = null;
 				if (field.HasMatch()) {
 					fieldMappingOld = classMappingOld?.Fields.Where(fieldM => fieldM.FieldNameA == field.GetMatch()!.CecilField.Name).SingleOrDefault((FieldMapping?) null);
@@ -211,6 +213,7 @@ public static class MatcherMain {
 				if (field.SuggestedMappedName != null) generatedNamedMappingsForType.AppendLine($"{fieldMappingNew.FieldNameB},{field.SuggestedMappedName}");
 			}
 			foreach (var generic in type.genericParamsOrdered) {
+				if (generic.IsIgnored()) continue;
 				GenericParameterMapping? genericMappingOld = null;
 				if (generic.HasMatch()) {
 					genericMappingOld = classMappingOld?.GenericParameters.Where(genericM => genericM.GenericNameA == generic.GetMatch()!.CecilTypeReference.Name).SingleOrDefault((GenericParameterMapping?) null);
@@ -229,6 +232,7 @@ public static class MatcherMain {
 				if (generic.SuggestedMappedName != null) generatedNamedMappingsForType.AppendLine($"{genericMappingNew.GenericNameB},{generic.SuggestedMappedName}");
 			}
 			foreach (var method in type.methodsOrdered) {
+				if (method.IsIgnored()) continue;
 				MethodMapping? methodMappingOld = null;
 				if (method.HasMatch()) {
 					var match = method.GetMatch()!.CecilMethod;
@@ -261,6 +265,7 @@ public static class MatcherMain {
 				if (method.SuggestedMappedName != null) generatedNamedMappingsForType.AppendLine($"{methodMappingNew.MethodNameB},{method.SuggestedMappedName}");
 
 				foreach (var generic in method.genericParamsOrdered) {
+					if (generic.IsIgnored()) continue;
 					GenericParameterMapping? genericMappingOld = null;
 					if (generic.HasMatch()) {
 						genericMappingOld = methodMappingOld?.GenericParameters.Where(genericM => genericM.GenericNameA == generic.GetMatch()!.CecilTypeReference.Name).SingleOrDefault((GenericParameterMapping?) null);
@@ -280,6 +285,7 @@ public static class MatcherMain {
 				}
 
 				foreach (var param in method.args) {
+					if (param.IsIgnored()) continue;
 					MethodParameterMapping? paramMappingOld = null;
 					if (param.HasMatch()) {
 						paramMappingOld = methodMappingOld?.Parameters.Where(paramM => paramM.ParameterNameA == param.GetMatch()!.CecilParameter.Name).SingleOrDefault((MethodParameterMapping?) null);

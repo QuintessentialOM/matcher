@@ -174,8 +174,7 @@ public class Matcher {
 
 			foreach (var (genericPosition, genericParam) in method.GenericParameters.WithIndex()) {
 				if (genericParam.Type == GenericParameterType.Method && genericParam.DeclaringMethod.FullName == methodInstance.CecilMethod.FullName) {
-					var genericParamInstance = env.GetCreateTypeInstance(genericParam);
-					env.types[genericParam.FullName] = genericParamInstance;
+					var genericParamInstance = env.GetCreateGenericParameterTypeInstance(genericParam);
 					methodInstance.genericParamsOrdered.Add(genericParamInstance);
 					genericParamInstance.position = genericPosition;
 				}
@@ -198,8 +197,7 @@ public class Matcher {
 		}
 		foreach (var (genericPosition, genericParam) in cls.CecilType.GenericParameters.WithIndex()) {
 			if (genericParam.DeclaringType.FullName == cls.GetId()) {
-				var genericParamInstance = env.GetCreateTypeInstance(genericParam);
-				env.types[genericParam.FullName] = genericParamInstance;
+				var genericParamInstance = env.GetCreateGenericParameterTypeInstance(genericParam);
 				cls.genericParamsOrdered.Add(genericParamInstance);
 				genericParamInstance.position = genericPosition;
 			}
@@ -820,6 +818,7 @@ public class Matcher {
 					var foundMatch = false;
 					foreach (var clsB in cmpClasses) {
 						if (clsB.CecilTypeReference.Name == obfB) {
+							Console.WriteLine($"hinted match {intermediaryA} -> {obfB}");
 							foundMatch = true;
 							matches[cls] = clsB;
 							break;
@@ -938,20 +937,21 @@ public class Matcher {
 				if (member.HasMatch() || !member.IsMatchable()) continue;
 
 				if (mappingsA != null && matchHints != null) {
-					string? intermediaryA;
+					string? intermediaryA = null;
 					if (member is FieldInstance field) {
 						intermediaryA = GetIntermediaryForFieldA(field);
 					} else if (member is MethodInstance method) {
 						intermediaryA = GetIntermediaryForMethodA(method);
-					} else { // TODO use match hints for type generic params
-						intermediaryA = null;
+					} else if (member is TypeInstance genericParam) {
+						intermediaryA = GetIntermediaryForGenericA(genericParam, cls);
 					}
 					if (intermediaryA != null && matchHints.ContainsKey(intermediaryA)) {
 						var obfB = matchHints[intermediaryA];
 						var foundMatch = false;
 						var possibleMatches = memberGetter.Invoke(cls.GetMatch());
 						foreach (var memberB in possibleMatches) {
-							if (((MatchableMember) (object) memberB).GetName() == obfB) {
+							if (((MatchableMemberOrClass) (object) memberB).GetName() == obfB) {
+								Console.WriteLine($"hinted match {intermediaryA} -> {obfB}");
 								foundMatch = true;
 								ret[member] = memberB;
 								break;
@@ -1033,7 +1033,23 @@ public class Matcher {
 				foreach (TypeInstance var in m.genericParamsOrdered) {
 					if (var.HasMatch() || !var.IsMatchable()) continue;
 
-					// TODO use match hints for method generic params
+					if (mappingsA != null && matchHints != null) {
+						var intermediaryA = GetIntermediaryForGenericA(var, m);
+						if (intermediaryA != null && matchHints.ContainsKey(intermediaryA)) {
+							var obfB = matchHints[intermediaryA];
+							var foundMatch = false;
+							var possibleMatches = m.GetMatch().genericParamsOrdered;
+							foreach (var clsB in possibleMatches) {
+								if (clsB.CecilTypeReference.Name == obfB) {
+									Console.WriteLine($"hinted match {intermediaryA} -> {obfB}");
+									foundMatch = true;
+									matches[var] = clsB;
+									break;
+								}
+							}
+							if (foundMatch) continue;
+						}
+					}
 
 					List<RankResult<TypeInstance>> ranking = TypeClassifier.Rank(var, m.GetMatch().genericParamsOrdered.ToArray(), level, env, maxMismatch, TypeSubgroup.MethodGenericParameter);
 
@@ -1097,6 +1113,7 @@ public class Matcher {
 							var possibleMatches = supplier.Invoke(m.GetMatch());
 							foreach (var clsB in possibleMatches) {
 								if (clsB.CecilParameter.Name == obfB) {
+									Console.WriteLine($"hinted match {intermediaryA} -> {obfB}");
 									foundMatch = true;
 									matches[var] = clsB;
 									break;
@@ -1234,6 +1251,7 @@ public class Matcher {
 			}
 
 			foreach (MethodInstance method in cls.methodsById.Values) {
+				if (method.IsIgnored()) continue;
 				var m = method.CecilMethod!;
 				var methodMapping = clsMapping?.Methods.Where(methodMapping => {
 					return methodMapping.MethodNameA == m.Name
@@ -1248,23 +1266,37 @@ public class Matcher {
 					}
 
 					foreach (MethodParamInstance arg in method.args) {
+						if (arg.IsIgnored()) continue;
 						var argMapping = methodMapping?.Parameters.Where(argMapping => argMapping.ParameterNameA == arg.CecilParameter.Name).SingleOrDefault((MethodParameterMapping?) null);
 						if (!arg.HasMatch()) {
 							Console.WriteLine($"unmatched method param {argMapping?.ParameterNameB ?? "???"} on method {methodMapping?.MethodNameB ?? "???"} ({method.CecilMethod!.FullName} -> {arg.CecilParameter.Name})");
 						}
 					}
-					// TODO method generic params
+					foreach (TypeInstance genericParam in method.genericParamsOrdered) {
+						if (genericParam.IsIgnored()) continue;
+						var genericMapping = methodMapping?.GenericParameters.Where(argMapping => argMapping.GenericNameA == genericParam.CecilTypeReference.Name).SingleOrDefault((GenericParameterMapping?) null);
+						if (!genericParam.HasMatch()) {
+							Console.WriteLine($"unmatched method generic param {genericMapping?.GenericNameB ?? "???"} on method {methodMapping?.MethodNameB ?? "???"} ({method.CecilMethod!.FullName} -> {genericParam.CecilTypeReference.Name})");
+						}
+					}
 				// }
 			}
 
 			foreach (FieldInstance field in cls.fieldsById.Values) {
+				if (field.IsIgnored()) continue;
 				var fieldMapping = clsMapping?.Fields.Where(fieldMapping => fieldMapping.FieldNameA == field.CecilField!.Name).SingleOrDefault((FieldMapping?) null);
 				if (!field.HasMatch()) {
 					Console.WriteLine($"unmatched field {fieldMapping?.FieldNameB ?? "???"} on class {clsMapping?.ClassNameB ?? "???"} ({field.CecilField!.FullName})");
 				}
 			}
 
-			// TODO class generic params
+			foreach (TypeInstance genericParam in cls.genericParamsOrdered) {
+				if (genericParam.IsIgnored()) continue;
+				var genericMapping = clsMapping?.GenericParameters.Where(argMapping => argMapping.GenericNameA == genericParam.CecilTypeReference.Name).SingleOrDefault((GenericParameterMapping?) null);
+				if (!genericParam.HasMatch()) {
+					Console.WriteLine($"unmatched class generic param {genericMapping?.GenericNameB ?? "???"} on class {clsMapping?.ClassNameB ?? "???"} ({cls.CecilTypeReference.FullName} -> {genericParam.CecilTypeReference.Name})");
+				}
+			}
 		}
 	}
 
@@ -1304,7 +1336,12 @@ public class Matcher {
 	}
 
 	public string? GetIntermediaryForFieldA(FieldInstance field) => GetIntermediaryForFieldA(field.CecilField);
-	// public string? GetIntermediaryForGenericA(TypeInstance type) => GetIntermediaryForGenericA(type.CecilTypeReference); // TODO
+	public string? GetIntermediaryForGenericA(TypeInstance genericParam, TypeInstance owner) => FindType(owner.CecilTypeReference)?.GenericParameters.Where(g => g.GenericNameA == genericParam.CecilTypeReference.Name)
+		.SingleOrDefault((GenericParameterMapping?) null)?.GenericNameB ?? genericParam.CecilTypeReference.Name;
+
+	public string? GetIntermediaryForGenericA(TypeInstance genericParam, MethodInstance owner) => FindMethod(owner.CecilMethod)?.GenericParameters.Where(g => g.GenericNameA == genericParam.CecilTypeReference.Name)
+		.SingleOrDefault((GenericParameterMapping?) null)?.GenericNameB ?? genericParam.CecilTypeReference.Name;
+
 	public string? GetIntermediaryForMethodA(MethodInstance method) => GetIntermediaryForMethodA(method.CecilMethod);
 	public string? GetIntermediaryForMethodParamA(MethodParamInstance param, MethodInstance method) => GetIntermediaryForMethodParamA(param.CecilParameter, method.CecilMethod);
 	public string? GetIntermediaryForTypeA(TypeInstance type) => GetIntermediaryForTypeA(type.CecilTypeReference);

@@ -20,10 +20,12 @@ public class SpecialCases {
 	}
 
 	public void DoSpecialCaseMatches() {
+		MatchAppInitMembers();
 		MatchTextures();
 		MatchClass9();
 		MatchClass111();
 		MatchClass246AndClass247();
+		IgnoreClass551FfiMethods();
 		MatchClass125AndClass213();
 		MatchStructFieldsByOrder();
 		MatchSteamCallbacks();
@@ -34,6 +36,30 @@ public class SpecialCases {
 		MatchMiscObfInnerClassMembers();
 
 		GenerateSuggestedAssetNames();
+	}
+
+	private void MatchAppInitMembers() {
+		// AppInit has a single method and field; I have no idea why it fails to match without special casing
+		const string appInitIntermediary = "class_119";
+
+		var appInitA = matcher.FindTypeAFromIntermediary(appInitIntermediary);
+		var appInitB = appInitA.GetMatch() ?? throw new Exception("class_119 (AppInit) match not found");
+
+		Console.WriteLine(string.Join(", ", appInitA.methodsOrdered.Select(m => m.CecilMethod.Name)));
+		Console.WriteLine(string.Join(", ", appInitB.methodsOrdered.Select(m => m.CecilMethod.Name)));
+
+		var methodsA = appInitA.methodsOrdered.Where(m => m.CecilMethod.Name != ".cctor" && m.CecilMethod.Name != ".ctor").ToList();
+		var methodsB = appInitB.methodsOrdered.Where(m => m.CecilMethod.Name != ".cctor" && m.CecilMethod.Name != ".ctor").ToList();
+
+		if (methodsA.Count != 1 || methodsB.Count != 1)
+			throw new Exception("Expected exactly one method in class_119 (AppInit)");
+		if (appInitA.fieldsOrdered.Count != 1 || appInitB.fieldsOrdered.Count != 1)
+			throw new Exception("Expected exactly one field in class_119 (AppInit)");
+
+		matcher.MatchMethod(methodsA[0], methodsB[0]);
+		matcher.MatchField(appInitA.fieldsOrdered[0], appInitB.fieldsOrdered[0]);
+
+		Console.WriteLine($"Matched members of class_119 (AppInit)");
 	}
 
 	private void GenerateSuggestedAssetNames() {
@@ -446,6 +472,31 @@ public class SpecialCases {
 			}
 		}
 		Console.WriteLine($"Matched {count} methods on class_246");
+	}
+
+	private void IgnoreClass551FfiMethods() {
+		// Ignore FFI methods in this class bc we don't need them mapped and they're kind of annoying to match (there seems to be a duplicated method with same signature and FFI method?)
+		const string class551Intermediary = "class_551";
+
+		var class551A = matcher.FindTypeAFromIntermediary(class551Intermediary);
+		var class551B = class551A.GetMatch() ?? throw new Exception("class_551 match not found");
+
+		var countA = 0;
+		var countB = 0;
+
+		foreach (var method in class551A.methodsOrdered) {
+			if (method.CecilMethod!.PInvokeInfo != null) {
+				method.MarkIgnored(true);
+				countA++;
+			}
+		}
+		foreach (var method in class551B.methodsOrdered) {
+			if (method.CecilMethod!.PInvokeInfo != null) {
+				method.MarkIgnored(true);
+				countB++;
+			}
+		}
+		Console.WriteLine($"Ignored {countA}/{countB} (A/B) FFI methods on class_551");
 	}
 
 	private void MatchClass125AndClass213() {

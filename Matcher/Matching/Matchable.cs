@@ -10,6 +10,8 @@ public abstract class Matchable(LocalClassEnv env, bool isNameObfuscated) {
 	// suggested name for intermediary->named mappings where there's a reasonable auto-generated name (assets from file path, etc.)
 	public string? SuggestedMappedName { get; set; }
 
+	private bool ignored = false;
+
 	// combination of name and other metadata e.g. method sig, field type
 	public abstract string GetId();
 	public abstract string GetName();
@@ -23,4 +25,13 @@ public abstract class Matchable(LocalClassEnv env, bool isNameObfuscated) {
 
 	public abstract Matchable? GetMatch();
 	// no base class SetMatch due to method parameter contravariance
+
+	public bool IsIgnored() {
+		return ignored;
+	}
+
+	public void MarkIgnored(bool ignored) {
+		this.ignored = ignored;
+		SetMatchable(!ignored);
+	}
 }
